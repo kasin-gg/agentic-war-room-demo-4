@@ -31,6 +31,7 @@ const MoneyCounter = dynamic(() => import('@/demo/components/MoneyCounter'), { s
 const IncidentBanner = dynamic(() => import('@/demo/components/IncidentBanner'), { ssr: false });
 const ApprovalCard = dynamic(() => import('@/demo/components/ApprovalCard'), { ssr: false });
 const OutroCard = dynamic(() => import('@/demo/components/OutroCard'), { ssr: false });
+const SwarmGraph = dynamic(() => import('@/demo/components/SwarmGraph'), { ssr: false });
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -1299,6 +1300,9 @@ export default function Dashboard() {
 
       {/* Morning Summary Outro Card Overlay (Phase 5) */}
       <OutroCard />
+
+      {/* Toggleable Swarm Topology Graph Overlay ([G] Key Toggle) */}
+      <SwarmGraph />
 
       {/* War Room Director Overlay */}
       <WarRoomDirector />
