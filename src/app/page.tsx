@@ -26,6 +26,9 @@ const WarRoomDirector = dynamic(() => import('@/demo/WarRoomDirector'), { ssr: f
 const OperationsDashboard = dynamic(() => import('@/demo/components/OperationsDashboard'), { ssr: false });
 const IncidentMapLayer = dynamic(() => import('@/demo/components/IncidentMapLayer'), { ssr: false });
 const SwarmPanel = dynamic(() => import('@/demo/components/SwarmPanel'), { ssr: false });
+const PhaseClock = dynamic(() => import('@/demo/components/PhaseClock'), { ssr: false });
+const MoneyCounter = dynamic(() => import('@/demo/components/MoneyCounter'), { ssr: false });
+const IncidentBanner = dynamic(() => import('@/demo/components/IncidentBanner'), { ssr: false });
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -1272,6 +1275,22 @@ export default function Dashboard() {
 
       {/* Multi-Agent Swarm Thought-Stream Rail */}
       <SwarmPanel />
+
+      {/* ── DEMO HUD OVERLAYS ── */}
+      {/* Top Center Incident Banner */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[190] pointer-events-auto max-w-[90vw]">
+        <IncidentBanner />
+      </div>
+
+      {/* Top Center Hero Money Counter */}
+      <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[180] pointer-events-auto">
+        <MoneyCounter />
+      </div>
+
+      {/* Phase Clock & Human Status Badge (Top Bar position) */}
+      <div className="hidden lg:block absolute top-16 left-[560px] z-[170] pointer-events-auto">
+        <PhaseClock />
+      </div>
 
       {/* War Room Director Overlay */}
       <WarRoomDirector />
