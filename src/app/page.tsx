@@ -23,6 +23,7 @@ const OsintPanel = dynamic(() => import('@/components/OsintPanel'));
 const EntityGraphPanel = dynamic(() => import('@/components/EntityGraphPanel'));
 const TokenPanel = dynamic(() => import('@/components/TokenPanel'));
 const WarRoomDirector = dynamic(() => import('@/demo/WarRoomDirector'), { ssr: false });
+const OperationsDashboard = dynamic(() => import('@/demo/components/OperationsDashboard'), { ssr: false });
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -1278,6 +1279,9 @@ export default function Dashboard() {
 
       {/* Keyboard Shortcuts Overlay */}
       <KeyboardShortcuts />
+
+      {/* Executive Operations Dashboard Overlay */}
+      <OperationsDashboard />
 
       {/* War Room Director Overlay */}
       <WarRoomDirector />
