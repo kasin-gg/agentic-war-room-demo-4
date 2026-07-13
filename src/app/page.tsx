@@ -29,6 +29,8 @@ const SwarmPanel = dynamic(() => import('@/demo/components/SwarmPanel'), { ssr: 
 const PhaseClock = dynamic(() => import('@/demo/components/PhaseClock'), { ssr: false });
 const MoneyCounter = dynamic(() => import('@/demo/components/MoneyCounter'), { ssr: false });
 const IncidentBanner = dynamic(() => import('@/demo/components/IncidentBanner'), { ssr: false });
+const ApprovalCard = dynamic(() => import('@/demo/components/ApprovalCard'), { ssr: false });
+const OutroCard = dynamic(() => import('@/demo/components/OutroCard'), { ssr: false });
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -1291,6 +1293,12 @@ export default function Dashboard() {
       <div className="hidden lg:block absolute top-16 left-[560px] z-[170] pointer-events-auto">
         <PhaseClock />
       </div>
+
+      {/* Executive Approval Card Overlay (Phase 4) */}
+      <ApprovalCard />
+
+      {/* Morning Summary Outro Card Overlay (Phase 5) */}
+      <OutroCard />
 
       {/* War Room Director Overlay */}
       <WarRoomDirector />
