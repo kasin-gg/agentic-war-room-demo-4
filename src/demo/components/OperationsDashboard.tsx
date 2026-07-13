@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDemoDirector } from '../useDemoDirector';
-import { Moon, TrendingUp, TrendingDown, Minus, ShieldAlert, CheckCircle2, AlertTriangle, Package, Clock, Users } from 'lucide-react';
+import { Moon, TrendingUp, TrendingDown, Minus, ShieldAlert, CheckCircle2, AlertTriangle, Package, Clock, Users, ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function OperationsDashboard() {
   const director = useDemoDirector();
-  const { scenario, metrics, phase, clock: scenarioClock, isHolding } = director;
+  const { scenario, metrics, phase, clock: scenarioClock } = director;
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
 
   // Real-time ticking ICT clock for Phase 0
   const [liveIctTime, setLiveIctTime] = useState<string>('');
@@ -70,7 +71,7 @@ export default function OperationsDashboard() {
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: 'easeOut' }}
-      className="absolute top-16 left-6 z-[150] w-[460px] pointer-events-auto rounded-xl backdrop-blur-xl bg-slate-950/80 border border-cyan-500/20 shadow-2xl p-4 font-mono text-slate-100 select-none"
+      className="absolute top-16 left-[76px] z-[150] w-[460px] pointer-events-auto rounded-xl backdrop-blur-xl bg-slate-950/80 border border-cyan-500/20 shadow-2xl p-4 font-mono text-slate-100 select-none"
     >
       {/* ── HEADER ── */}
       <div className="flex items-center justify-between border-b border-slate-800/80 pb-3 mb-3">
@@ -88,37 +89,56 @@ export default function OperationsDashboard() {
           </div>
         </div>
 
-        <div className="text-right">
-          <div className="flex items-center justify-end gap-1.5 font-bold text-sm text-cyan-300 tabular-nums">
-            <Clock className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-            {displayClock}
-          </div>
-          {phase > 0 && (
-            <div className="text-[9px] text-amber-400/90 font-semibold tracking-wide">
-              FLASHBACK INCIDENT TIMELINE
+        <div className="flex items-center gap-3">
+          <div className="text-right">
+            <div className="flex items-center justify-end gap-1.5 font-bold text-sm text-cyan-300 tabular-nums">
+              <Clock className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+              {displayClock}
             </div>
-          )}
+            {phase > 0 && (
+              <div className="text-[9px] text-amber-400/90 font-semibold tracking-wide">
+                FLASHBACK TIMELINE
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={() => setIsCollapsed((prev) => !prev)}
+            className="p-1 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-cyan-300 border border-slate-700 transition-colors"
+            title={isCollapsed ? 'Expand Dashboard' : 'Collapse Dashboard'}
+          >
+            {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+          </button>
         </div>
       </div>
 
-      {/* ── HEADLINE STATUS BANNER ── */}
-      <div
-        className={`flex items-center justify-between px-3 py-1.5 rounded-lg border text-xs font-bold mb-3 ${headlineColor}`}
-      >
-        <div className="flex items-center gap-2">
-          {metrics.otifStatus === 'healthy' ? (
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          ) : metrics.otifStatus === 'warning' ? (
-            <AlertTriangle className="w-4 h-4 text-amber-400 animate-bounce" />
-          ) : (
-            <ShieldAlert className="w-4 h-4 text-red-400 animate-pulse" />
-          )}
-          <span>{metrics.opsHeadline}</span>
-        </div>
-        <span className="text-[9px] tracking-widest uppercase opacity-75">
-          {phase === 0 ? 'STATUS NOMINAL' : `PHASE ${phase}`}
-        </span>
-      </div>
+      <AnimatePresence>
+        {!isCollapsed && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+            className="overflow-hidden space-y-3"
+          >
+            {/* ── HEADLINE STATUS BANNER ── */}
+            <div
+              className={`flex items-center justify-between px-3 py-1.5 rounded-lg border text-xs font-bold ${headlineColor}`}
+            >
+              <div className="flex items-center gap-2">
+                {metrics.otifStatus === 'healthy' ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                ) : metrics.otifStatus === 'warning' ? (
+                  <AlertTriangle className="w-4 h-4 text-amber-400 animate-bounce" />
+                ) : (
+                  <ShieldAlert className="w-4 h-4 text-red-400 animate-pulse" />
+                )}
+                <span>{metrics.opsHeadline}</span>
+              </div>
+              <span className="text-[9px] tracking-widest uppercase opacity-75">
+                {phase === 0 ? 'STATUS NOMINAL' : `PHASE ${phase}`}
+              </span>
+            </div>
 
       {/* ── MAIN METRICS GRID (2-COLUMN) ── */}
       <div className="grid grid-cols-2 gap-3 mb-3">
@@ -294,6 +314,9 @@ export default function OperationsDashboard() {
           )}
         </AnimatePresence>
       </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
