@@ -25,6 +25,7 @@ const TokenPanel = dynamic(() => import('@/components/TokenPanel'));
 const WarRoomDirector = dynamic(() => import('@/demo/WarRoomDirector'), { ssr: false });
 const OperationsDashboard = dynamic(() => import('@/demo/components/OperationsDashboard'), { ssr: false });
 const IncidentMapLayer = dynamic(() => import('@/demo/components/IncidentMapLayer'), { ssr: false });
+const SwarmPanel = dynamic(() => import('@/demo/components/SwarmPanel'), { ssr: false });
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -1268,6 +1269,9 @@ export default function Dashboard() {
 
       {/* Executive Operations Dashboard Overlay */}
       <OperationsDashboard />
+
+      {/* Multi-Agent Swarm Thought-Stream Rail */}
+      <SwarmPanel />
 
       {/* War Room Director Overlay */}
       <WarRoomDirector />
