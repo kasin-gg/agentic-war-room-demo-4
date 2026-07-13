@@ -672,33 +672,19 @@ export default function Dashboard() {
               />
             </div>
 
-            {/* ── OSIRIS title — letter-by-letter stagger ── */}
-            <div className="flex items-center gap-[2px] mb-3 z-[2]">
-              {'OSIRIS'.split('').map((letter, i) => (
-                <motion.span
-                  key={i}
-                  initial={{ opacity: 0, y: 20, filter: 'blur(8px)' }}
-                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                  transition={{ delay: 0.6 + i * 0.09, duration: 0.5, ease: 'easeOut' }}
-                  className="text-4xl md:text-5xl font-bold tracking-[0.5em] font-mono"
-                  style={{ color: 'var(--text-heading)', textShadow: '0 0 30px rgba(212,175,55,0.25)' }}
-                >
-                  {letter}
-                </motion.span>
-              ))}
-            </div>
-
-            {/* ── Subtitle — typewriter reveal ── */}
+            {/* ── Title — typewriter reveal ── */}
             <div className="overflow-hidden mb-8 z-[2]">
               <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: '100%' }}
-                transition={{ delay: 1.3, duration: 0.9, ease: 'easeInOut' }}
-                className="overflow-hidden whitespace-nowrap"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6, duration: 0.8, ease: 'easeOut' }}
+                className="text-center px-4"
               >
-                <p className="text-[10px] md:text-[11px] font-mono tracking-[0.5em] text-[var(--gold-primary)]" style={{ opacity: 0.85 }}>
-                  GLOBAL INTELLIGENCE PLATFORM
-                </p>
+                <h2
+                  className="text-base md:text-xl font-bold font-mono tracking-[0.25em] text-[var(--gold-primary)] uppercase drop-shadow-[0_0_20px_rgba(212,175,55,0.35)]"
+                >
+                  Agentic Digital Twin: Real-time Global War Room
+                </h2>
               </motion.div>
             </div>
 
@@ -878,9 +864,10 @@ export default function Dashboard() {
             alt="OSIRIS Logo"
             className="w-8 h-8 md:w-10 md:h-10 shrink-0 object-cover rounded-md border border-[#D4AF37]/50 shadow-[0_0_12px_rgba(212,175,55,0.4)]"
           />
-          <div className="flex flex-col items-start gap-0.5">
-            <h1 className="text-lg md:text-xl font-bold tracking-[0.4em] text-[#D4AF37] font-mono">OSIRIS</h1>
-            <span className="text-[8px] md:text-[9px] font-mono tracking-[0.2em] opacity-80 uppercase text-[#D4AF37]">GLOBAL INTELLIGENCE COMMAND</span>
+          <div className="flex flex-col items-start justify-center">
+            <span className="text-xs md:text-sm font-bold font-mono tracking-[0.25em] text-[#D4AF37] uppercase drop-shadow-[0_0_10px_rgba(212,175,55,0.4)]">
+              Agentic Digital Twin: Real-time Global War Room
+            </span>
           </div>
         </div>
         <div className="flex items-center gap-3 mt-1.5 pl-[44px] min-w-0 pr-4">
