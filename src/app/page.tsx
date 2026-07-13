@@ -24,6 +24,7 @@ const EntityGraphPanel = dynamic(() => import('@/components/EntityGraphPanel'));
 const TokenPanel = dynamic(() => import('@/components/TokenPanel'));
 const WarRoomDirector = dynamic(() => import('@/demo/WarRoomDirector'), { ssr: false });
 const OperationsDashboard = dynamic(() => import('@/demo/components/OperationsDashboard'), { ssr: false });
+const IncidentMapLayer = dynamic(() => import('@/demo/components/IncidentMapLayer'), { ssr: false });
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -90,6 +91,7 @@ export default function Dashboard() {
   const [dataVersion, setDataVersion] = useState(0);
   const data = dataRef.current;
 
+  const [mapInstance, setMapInstance] = useState<any>(null);
   const [backendStatus, setBackendStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
   const [mapView, setMapView] = useState({ zoom: 2.5, latitude: 20 });
   const [flyToLocation, setFlyToLocation] = useState<{ lat: number; lng: number; zoom?: number; ts: number } | null>(null);
@@ -792,7 +794,9 @@ export default function Dashboard() {
           scanTargets={scanTargets}
           demoMode={demoMode}
           theme={osirisTheme}
+          onMapReady={setMapInstance}
         />
+        <IncidentMapLayer map={mapInstance} />
       </ErrorBoundary>
 
 

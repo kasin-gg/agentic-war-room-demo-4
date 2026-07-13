@@ -18,6 +18,7 @@ interface OsirisMapProps {
   scanTargets?: any[];
   demoMode?: boolean;
   theme?: 'core' | 'ghost';
+  onMapReady?: (map: maplibregl.Map) => void;
 }
 
 function computeSolarTerminator(): [number, number][] {
@@ -42,7 +43,7 @@ function computeSolarTerminator(): [number, number][] {
 
 const EMPTY_FC = { type: 'FeatureCollection' as const, features: [] };
 
-function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightClick, onViewStateChange, flyToLocation, projection = 'globe', mapStyle = 'dark', sweepData, scanTargets = [], demoMode = false, theme = 'core' }: OsirisMapProps) {
+function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightClick, onViewStateChange, flyToLocation, projection = 'globe', mapStyle = 'dark', sweepData, scanTargets = [], demoMode = false, theme = 'core', onMapReady }: OsirisMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const popupRef = useRef<maplibregl.Popup | null>(null);
@@ -157,6 +158,8 @@ function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCl
 
     map.on('load', () => {
       mapRef.current = map;
+      setMapReady(true);
+      if (onMapReady) onMapReady(map);
       
       // Theme colors
       const isGhost = theme === 'ghost';
