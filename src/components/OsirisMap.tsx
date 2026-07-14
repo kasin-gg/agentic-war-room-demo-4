@@ -146,14 +146,6 @@ function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCl
       center: [25.48, 42.70], zoom: 6.5, minZoom: 1.5, maxZoom: 18,
       attributionControl: false,
       maxPitch: 85,
-      transformRequest: (url: string) => {
-        // Route all CARTO CDN requests through the internal Next.js proxy API
-        if (url.includes('cartocdn.com')) {
-          const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-          return { url: `${baseUrl}/api/proxy-tiles?url=${encodeURIComponent(url)}` };
-        }
-        return { url };
-      },
     });
 
     map.on('load', () => {
