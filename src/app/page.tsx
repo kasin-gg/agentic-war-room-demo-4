@@ -15,6 +15,8 @@ import ViewPresets from '@/components/ViewPresets';
 import KeyboardShortcuts from '@/components/KeyboardShortcuts';
 import GlobalStatusBar from '@/components/GlobalStatusBar';
 import LiveAlerts from '@/components/LiveAlerts';
+import { useDemoCamera } from '@/demo/useDemoDirector';
+import { ACTIVE_SCENARIO } from '@/demo/config';
 
 const OsirisMap = dynamic(() => import('@/components/OsirisMap'), { ssr: false });
 const LayerPanel = dynamic(() => import('@/components/LayerPanel'));
@@ -24,6 +26,7 @@ const EntityGraphPanel = dynamic(() => import('@/components/EntityGraphPanel'));
 const TokenPanel = dynamic(() => import('@/components/TokenPanel'));
 const WarRoomDirector = dynamic(() => import('@/demo/WarRoomDirector'), { ssr: false });
 const DemoKeyboard = dynamic(() => import('@/demo/DemoKeyboard'), { ssr: false });
+const GlobalTwinIntro = dynamic(() => import('@/demo/components/GlobalTwinIntro'), { ssr: false });
 const OperationsDashboard = dynamic(() => import('@/demo/components/OperationsDashboard'), { ssr: false });
 const IncidentMapLayer = dynamic(() => import('@/demo/components/IncidentMapLayer'), { ssr: false });
 const SwarmPanel = dynamic(() => import('@/demo/components/SwarmPanel'), { ssr: false });
@@ -129,9 +132,44 @@ export default function Dashboard() {
   const [demoMode, setDemoMode] = useState(false);
   const [osirisTheme, setOsirisTheme] = useState<'core'|'ghost'>('core');
 
+  // Demo cold-open camera state (lightweight selector — no typewriter churn).
+  const demoCam = useDemoCamera();
+
   useEffect(() => {
     document.body.className = osirisTheme === 'core' ? '' : `theme-${osirisTheme}`;
   }, [osirisTheme]);
+
+  // ── Global Twin cold-open camera choreography ──
+  // Intro: spin the globe over the real live world, scatter agent-coverage
+  // reticles, then descend cinematically into Bangkok as the morning begins.
+  useEffect(() => {
+    if (!mapInstance) return;
+    const intro = ACTIVE_SCENARIO.intro;
+
+    if (demoCam.introActive) {
+      setMapProjection('globe');
+      setDemoMode(true); // 0.5°/s globe auto-spin
+      // Beat 1 scatters coverage reticles; beat 0 keeps the globe clean.
+      if (demoCam.introStep >= 1 && intro) {
+        setScanTargets(intro.coveragePoints.map((p) => ({ id: p.id, lat: p.lat, lng: p.lng })));
+      } else {
+        setScanTargets([]);
+      }
+      try {
+        mapInstance.easeTo({ zoom: 2.1, pitch: 0, duration: 1400 });
+      } catch { /* map not ready */ }
+    } else {
+      // Descend into the operation: stop the spin BEFORE the flyTo so the rAF
+      // loop can't re-grab the camera, clear reticles, then fly into Bangkok.
+      setDemoMode(false);
+      setScanTargets([]);
+      const hq = ACTIVE_SCENARIO.nodes.find((n) => n.role === 'hq');
+      const center: [number, number] = hq ? hq.coords : [100.5018, 13.7563];
+      try {
+        mapInstance.flyTo({ center, zoom: 4.6, pitch: 25, bearing: -12, duration: 3500, essential: true });
+      } catch { /* map not ready */ }
+    }
+  }, [demoCam.introActive, demoCam.introStep, mapInstance]);
 
   const isMobile = useIsMobile();
   const startTime = useRef(Date.now());
@@ -620,7 +658,7 @@ export default function Dashboard() {
 
 
             {/* ── Geometric tactical logo ── */}
-            <div className="relative w-64 h-64 mb-8 flex items-center justify-center z-[2]">
+            <div className="relative w-96 h-96 mb-10 flex items-center justify-center z-[2]">
               {/* Outer ring — slow clockwise */}
               <motion.div
                 initial={{ opacity: 0, scale: 0.6, rotate: 0 }}
@@ -639,7 +677,7 @@ export default function Dashboard() {
                 animate={{ opacity: 1, scale: 1, rotate: -360 }}
                 transition={{ opacity: { duration: 0.6, delay: 0.15 }, scale: { duration: 0.8, delay: 0.15, ease: 'easeOut' }, rotate: { duration: 14, repeat: Infinity, ease: 'linear' } }}
                 className="absolute rounded-full"
-                style={{ inset: '28px', border: '1.5px solid rgba(0,229,255,0.25)' }}
+                style={{ inset: '42px', border: '1.5px solid rgba(0,229,255,0.25)' }}
               >
                 <div className="absolute top-1/2 right-0 translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full" style={{ background: 'var(--cyan-primary)', boxShadow: '0 0 14px var(--cyan-primary), 0 0 28px rgba(0,229,255,0.3)' }} />
                 <div className="absolute bottom-0 left-1/4 translate-y-1/2 w-1.5 h-1.5 rounded-full" style={{ background: 'rgba(0,229,255,0.4)' }} />
@@ -651,7 +689,7 @@ export default function Dashboard() {
                 animate={{ opacity: 1, scale: 1, rotate: 360 }}
                 transition={{ opacity: { duration: 0.6, delay: 0.3 }, scale: { duration: 0.8, delay: 0.3, ease: 'easeOut' }, rotate: { duration: 8, repeat: Infinity, ease: 'linear' } }}
                 className="absolute rounded-full"
-                style={{ inset: '58px', border: '1.5px solid rgba(212,175,55,0.35)' }}
+                style={{ inset: '87px', border: '1.5px solid rgba(212,175,55,0.35)' }}
               >
                 <div className="absolute top-0 left-1/4 -translate-y-1/2 w-2 h-2 rounded-full" style={{ background: 'var(--gold-primary)', boxShadow: '0 0 12px var(--gold-primary)' }} />
               </motion.div>
@@ -661,7 +699,7 @@ export default function Dashboard() {
                 initial={{ opacity: 0, scale: 0 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.4, duration: 0.7, ease: [0.34, 1.56, 0.64, 1] }}
-                className="relative w-32 h-32 rounded-full overflow-hidden flex items-center justify-center border-2 border-[var(--gold-primary)] shadow-[0_0_45px_rgba(212,175,55,0.65)]"
+                className="relative w-48 h-48 rounded-full overflow-hidden flex items-center justify-center border-2 border-[var(--gold-primary)] shadow-[0_0_45px_rgba(212,175,55,0.65)]"
               >
                 <img
                   src="https://images.squarespace-cdn.com/content/v1/5e331382d811b967fdb0e5f3/1605827400531-XMKJY9ATSNHK4TT46KAM/Header.jpg"
@@ -675,7 +713,7 @@ export default function Dashboard() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: [0, 0.2, 0], rotate: [0, 360] }}
                 transition={{ opacity: { duration: 3, repeat: Infinity }, rotate: { duration: 3, repeat: Infinity, ease: 'linear' }, delay: 0.6 }}
-                className="absolute inset-[14px] rounded-full"
+                className="absolute inset-[21px] rounded-full"
                 style={{ background: 'conic-gradient(from 0deg, transparent 0deg, rgba(212,175,55,0.2) 40deg, transparent 80deg)' }}
               />
             </div>
@@ -689,7 +727,7 @@ export default function Dashboard() {
                 className="text-center px-4"
               >
                 <h2
-                  className="text-base md:text-xl font-bold font-mono tracking-[0.25em] text-[var(--gold-primary)] uppercase drop-shadow-[0_0_20px_rgba(212,175,55,0.35)]"
+                  className="text-xl md:text-3xl font-bold font-mono tracking-[0.25em] text-[var(--gold-primary)] uppercase drop-shadow-[0_0_20px_rgba(212,175,55,0.35)]"
                 >
                   Agentic Digital Twin: Real-time Global War Room
                 </h2>
@@ -697,7 +735,7 @@ export default function Dashboard() {
             </div>
 
             {/* ── Multi-stage progress bar ── */}
-            <div className="w-72 md:w-96 z-[2]">
+            <div className="w-96 md:w-[32rem] z-[2]">
               {/* Thin progress track */}
               <div className="relative w-full h-[2.5px] rounded-full overflow-hidden" style={{ background: 'rgba(212,175,55,0.15)' }}>
                 <motion.div
@@ -785,7 +823,7 @@ export default function Dashboard() {
           theme={osirisTheme}
           onMapReady={setMapInstance}
         />
-        <IncidentMapLayer map={mapInstance} />
+        {!demoCam.introActive && <IncidentMapLayer map={mapInstance} />}
       </ErrorBoundary>
 
 
@@ -1274,38 +1312,46 @@ export default function Dashboard() {
       {/* Keyboard Shortcuts Overlay */}
       <KeyboardShortcuts />
 
-      {/* Executive Operations Dashboard Overlay */}
-      <OperationsDashboard />
+      {/* Global Twin cold-open (globe intro before the crisis arc) */}
+      <GlobalTwinIntro />
 
-      {/* Multi-Agent Swarm Thought-Stream Rail */}
-      <SwarmPanel />
+      {/* Crisis-arc overlays appear only after descending from the globe intro */}
+      {!demoCam.introActive && (
+        <>
+          {/* Executive Operations Dashboard Overlay */}
+          <OperationsDashboard />
 
-      {/* ── DEMO HUD OVERLAYS ── */}
-      {/* Top Center Incident Banner */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[190] pointer-events-auto max-w-[90vw]">
-        <IncidentBanner />
-      </div>
+          {/* Multi-Agent Swarm Thought-Stream Rail */}
+          <SwarmPanel />
 
-      {/* Top Center Hero Money Counter */}
-      <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[180] pointer-events-auto">
-        <MoneyCounter />
-      </div>
+          {/* ── DEMO HUD OVERLAYS ── */}
+          {/* Top Center Incident Banner */}
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[190] pointer-events-auto max-w-[90vw]">
+            <IncidentBanner />
+          </div>
 
-      {/* Phase Clock & Human Status Badge (Top Bar position) */}
-      <div className="hidden lg:block absolute top-16 left-[560px] z-[170] pointer-events-auto">
-        <PhaseClock />
-      </div>
+          {/* Top Center Hero Money Counter */}
+          <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[180] pointer-events-auto">
+            <MoneyCounter />
+          </div>
 
-      {/* Executive Approval Card Overlay (Phase 4) */}
-      <ApprovalCard />
+          {/* Phase Clock & Human Status Badge (Top Bar position) */}
+          <div className="hidden lg:block absolute top-16 left-[560px] z-[170] pointer-events-auto">
+            <PhaseClock />
+          </div>
 
-      {/* Morning Summary Outro Card Overlay (Phase 5) */}
-      <OutroCard />
+          {/* Executive Approval Card Overlay (Phase 4) */}
+          <ApprovalCard />
 
-      {/* Toggleable Swarm Topology Graph Overlay ([G] Key Toggle) */}
-      <SwarmGraph />
+          {/* Morning Summary Outro Card Overlay (Phase 5) */}
+          <OutroCard />
 
-      {/* Single canonical demo keyboard handler (SPACE/Y/K/R/G) */}
+          {/* Toggleable Swarm Topology Graph Overlay ([G] Key Toggle) */}
+          <SwarmGraph />
+        </>
+      )}
+
+      {/* Single canonical demo keyboard handler (SPACE/Y/K/R/G) — always mounted */}
       <DemoKeyboard />
 
       {/* War Room Director Overlay (debug readout, hidden unless SHOW_DEBUG_OVERLAY) */}

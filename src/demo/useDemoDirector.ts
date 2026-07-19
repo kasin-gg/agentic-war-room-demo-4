@@ -21,7 +21,14 @@ const SENTINEL_ID = 'agent-sentinel';
 const SPECIALIST_KICK_BASE_MS = 100; // initial delay before the first agent types
 const RESET_WINDOW_MS = 50;
 
+// Cinematic "Global Twin" cold-open plays before the crisis arc (phase 0).
+// Two presenter-driven beats: 0 = Living-Twin title, 1 = swarm coverage sweep.
+// Advancing past the last beat descends into the calm morning (phase 0, live).
+const INTRO_STEPS = 2;
+
 interface StoreState {
+  introActive: boolean;
+  introStep: number;
   phaseIndex: number;
   isHolding: boolean;
   isResetting: boolean;
@@ -30,6 +37,8 @@ interface StoreState {
 }
 
 const INITIAL_STATE: StoreState = {
+  introActive: true,
+  introStep: 0,
   phaseIndex: 0,
   isHolding: false,
   isResetting: false,
@@ -136,6 +145,7 @@ function kickAgent(agentId: string, startDelayMs: number) {
 // Kick playback for every agent that should be active at the current phase.
 // Idempotent, so calling it repeatedly (e.g. on key-mash) never double-plays.
 function kickAgentsForCurrentPhase() {
+  if (state.introActive) return; // agents stay dormant during the cold-open
   const p = state.phaseIndex;
   const staggerMs = scenario.timing.staggerMs ?? 200;
 
@@ -155,6 +165,18 @@ function kickAgentsForCurrentPhase() {
 // --- Actions ---
 function advance() {
   if (state.isResetting) return; // ignore input mid-transition
+
+  // Cold-open: walk the intro beats, then descend into the live morning (phase 0).
+  if (state.introActive) {
+    if (state.introStep < INTRO_STEPS - 1) {
+      setState({ introStep: state.introStep + 1 });
+    } else {
+      setState({ introActive: false, introStep: INTRO_STEPS - 1, phaseIndex: 0 });
+      kickAgentsForCurrentPhase(); // Sentinel begins monitoring the morning
+    }
+    return;
+  }
+
   if (state.phaseIndex >= 4) return; // stops at 4 awaiting approval
   setState({ phaseIndex: state.phaseIndex + 1 });
   kickAgentsForCurrentPhase();
@@ -174,9 +196,11 @@ function hold() {
 function reset() {
   clearAllTimers();
   kicked.clear();
-  // Pristine phase 0, with a brief isResetting window that blocks input and lets
-  // subscribers flush cleanly. showGraph is intentionally sticky across resets.
+  // Back to the pristine globe cold-open, with a brief isResetting window that
+  // blocks input and lets subscribers flush cleanly. showGraph is sticky.
   setState({
+    introActive: true,
+    introStep: 0,
     phaseIndex: 0,
     isHolding: false,
     isResetting: true,
@@ -185,7 +209,7 @@ function reset() {
   pushTimer(
     setTimeout(() => {
       setState({ isResetting: false });
-      kickAgentsForCurrentPhase(); // replay the Sentinel from a clean slate
+      // Agents stay dormant during the intro; the Sentinel is kicked on descent.
     }, RESET_WINDOW_MS)
   );
 }
@@ -208,10 +232,8 @@ function getServerSnapshot() {
   return SERVER_STATE;
 }
 
-// Start the Sentinel immediately on module load (client-only; components are ssr:false).
-if (typeof window !== 'undefined') {
-  kickAgentsForCurrentPhase();
-}
+// Nothing kicks on module load: the demo opens on the globe cold-open (introActive),
+// and the Sentinel starts only once the presenter descends into the morning.
 
 // Stable action bundle (referentially constant across renders).
 export const directorActions = { advance, approve, hold, reset, toggleGraph };
@@ -221,7 +243,7 @@ type PhaseKey = 'p0' | 'p1' | 'p2' | 'p3' | 'p4' | 'p5';
 // Derive the full reactive view from a raw snapshot. Only recomputed when the
 // snapshot reference changes (i.e. on real state change) via useMemo in the hook.
 function computeDerived(snap: StoreState) {
-  const { phaseIndex, isHolding, showGraph, playback } = snap;
+  const { introActive, introStep, phaseIndex, isHolding, showGraph, playback } = snap;
   const phaseKey = (`p${phaseIndex}` as PhaseKey);
 
   const activeAgentIds = new Set<string>();
@@ -253,6 +275,10 @@ function computeDerived(snap: StoreState) {
 
   return {
     scenario,
+    intro: scenario.intro,
+    introActive,
+    introStep,
+    introStepCount: INTRO_STEPS,
     phase: phaseIndex,
     phaseKey,
     clock: scenario.clock[phaseKey],
@@ -323,4 +349,23 @@ function computeArcs(phaseIndex: number): ScenarioArc[] {
 export function useDemoDirector() {
   const snap = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   return useMemo(() => computeDerived(snap), [snap]);
+}
+
+// Compact, value-stable key of only the fields the map camera cares about, so a
+// heavy consumer (page.tsx) can subscribe WITHOUT re-rendering on every
+// per-character typewriter update. Strings compare by value under Object.is,
+// so this only triggers a render when intro/phase actually change.
+function getCameraKey() {
+  return `${state.introActive ? 1 : 0}:${state.introStep}:${state.phaseIndex}`;
+}
+const SERVER_CAMERA_KEY = '1:0:0';
+
+/**
+ * Lightweight selector for the map-camera choreography. Re-renders only when the
+ * intro stage or phase changes — never on typewriter playback churn.
+ */
+export function useDemoCamera() {
+  const key = useSyncExternalStore(subscribe, getCameraKey, () => SERVER_CAMERA_KEY);
+  const [intro, step, phase] = key.split(':');
+  return { introActive: intro === '1', introStep: Number(step), phase: Number(phase) };
 }

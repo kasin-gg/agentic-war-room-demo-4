@@ -278,4 +278,30 @@ export const supplyChainScenario: Scenario = {
       },
     },
   },
+  intro: {
+    title: 'GLOBAL OPERATIONS TWIN — LIVE',
+    subtitle: 'Cymbal Logistics · a living digital twin of every shipment, port & route on Earth',
+    kpis: [
+      { label: 'Assets Tracked', value: '12,480' },
+      { label: 'Regions Online', value: '5 / 5' },
+      { label: 'Agents On Watch', value: '5 · 24/7' },
+      { label: 'Promises In Flight', value: '14,391' },
+    ],
+    // Global coverage points where the swarm is continuously watching. Spread
+    // across regions/timezones incl. the Americas (asleep at 08:14 ICT).
+    coveragePoints: [
+      { id: 'cov-bangkok', lat: 13.7563, lng: 100.5018 },
+      { id: 'cov-singapore', lat: 1.3521, lng: 103.8198 },
+      { id: 'cov-shanghai', lat: 31.2304, lng: 121.4737 },
+      { id: 'cov-hongkong', lat: 22.3193, lng: 114.1694 },
+      { id: 'cov-tokyo', lat: 35.6895, lng: 139.6917 },
+      { id: 'cov-mumbai', lat: 19.076, lng: 72.8777 },
+      { id: 'cov-dubai', lat: 25.2048, lng: 55.2708 },
+      { id: 'cov-rotterdam', lat: 51.9244, lng: 4.4777 },
+      { id: 'cov-london', lat: 51.5072, lng: -0.1276 },
+      { id: 'cov-newyork', lat: 40.7128, lng: -74.006 },
+      { id: 'cov-losangeles', lat: 34.0522, lng: -118.2437 },
+      { id: 'cov-santos', lat: -23.9608, lng: -46.3336 },
+    ],
+  },
 };

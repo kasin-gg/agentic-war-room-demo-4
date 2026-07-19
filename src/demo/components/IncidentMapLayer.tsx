@@ -262,10 +262,9 @@ export default function IncidentMapLayer({ map }: IncidentMapLayerProps) {
     } else if (phase === 5) {
       // Gentle camera ease out to view the recovered network
       map.easeTo({ center: centroid, zoom: 3.8, duration: 2500, pitch: 15 });
-    } else if (phase === 0) {
-      // Camera reset on phase 0
-      map.easeTo({ center: centroid, zoom: 3.5, duration: 1500, pitch: 0 });
     }
+    // Phase 0 framing is owned by the Global Twin intro descent (page.tsx),
+    // so this layer intentionally makes no camera move at phase 0.
   }, [map, phase, nodes]);
 
   // Remove our sources/layers when the map changes or on unmount (no leaks).

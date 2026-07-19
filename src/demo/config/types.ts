@@ -54,6 +54,24 @@ export interface ScenarioMetrics {
   phases: Record<'p0' | 'p1' | 'p2' | 'p3' | 'p4' | 'p5', MetricsSnapshot>;
 }
 
+export interface IntroKpi {
+  label: string;
+  value: string;
+}
+
+export interface IntroCoveragePoint {
+  id: string;
+  lat: number;
+  lng: number;
+}
+
+export interface ScenarioIntro {
+  title: string;
+  subtitle: string;
+  kpis: IntroKpi[];
+  coveragePoints: IntroCoveragePoint[];
+}
+
 export interface Scenario {
   id: string;
   industry: string;
@@ -85,4 +103,5 @@ export interface Scenario {
     footer: string;
   };
   metrics: ScenarioMetrics;
+  intro?: ScenarioIntro; // optional cinematic "global twin" cold-open
 }

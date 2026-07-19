@@ -7,7 +7,7 @@ import { Moon, TrendingUp, TrendingDown, Minus, ShieldAlert, CheckCircle2, Alert
 
 export default function OperationsDashboard() {
   const director = useDemoDirector();
-  const { scenario, metrics, phase, clock: scenarioClock } = director;
+  const { scenario, metrics, phase, money, clock: scenarioClock } = director;
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
 
   // Real-time ticking ICT clock for Phase 0
@@ -65,6 +65,69 @@ export default function OperationsDashboard() {
       : 'text-red-400';
 
   const promisesAtRisk = metrics.promisesTotal - metrics.promisesKept;
+
+  // ── NORTH STAR: the single number a CEO should look at, per story beat ──
+  const northStar: {
+    tone: 'healthy' | 'warning' | 'critical';
+    label: string;
+    value: string;
+    sub: string;
+    badge?: string;
+  } = (() => {
+    if (phase >= 5) {
+      return {
+        tone: 'healthy',
+        label: 'REVENUE PROTECTED',
+        value: `$${money.recoveredValue}M`,
+        sub: money.recoveredLabel,
+        badge: 'CRISIS CONTAINED',
+      };
+    }
+    if (phase >= 2) {
+      return {
+        tone: 'critical',
+        label: 'REVENUE AT RISK',
+        value: `$${money.atRiskValue}M`,
+        sub: `${promisesAtRisk.toLocaleString()} customer promises exposed today`,
+        badge: phase === 4 ? 'AWAITING AUTHORIZATION' : phase === 3 ? 'SWARM RESPONDING' : 'LIVE INCIDENT',
+      };
+    }
+    if (phase === 1) {
+      return {
+        tone: 'warning',
+        label: 'ON-TIME IN FULL',
+        value: `${metrics.otif.toFixed(1)}%`,
+        sub: 'early signal — on-time slipping vs 98% target',
+        badge: 'EARLY SIGNAL',
+      };
+    }
+    return {
+      tone: 'healthy',
+      label: 'PROMISES KEPT TODAY',
+      value: metrics.promisesKept.toLocaleString(),
+      sub: `of ${metrics.promisesTotal.toLocaleString()} deliveries · ${metrics.otif.toFixed(1)}% on-time`,
+      badge: 'ALL ON TRACK',
+    };
+  })();
+
+  const heroColor =
+    northStar.tone === 'healthy'
+      ? 'text-emerald-300'
+      : northStar.tone === 'warning'
+      ? 'text-amber-300'
+      : 'text-red-300';
+  const heroBg =
+    northStar.tone === 'healthy'
+      ? 'bg-emerald-950/40 border-emerald-500/30'
+      : northStar.tone === 'warning'
+      ? 'bg-amber-950/40 border-amber-500/30'
+      : 'bg-red-950/50 border-red-500/40';
+  const heroGlow =
+    northStar.tone === 'healthy'
+      ? 'drop-shadow-[0_0_18px_rgba(16,185,129,0.45)]'
+      : northStar.tone === 'warning'
+      ? 'drop-shadow-[0_0_18px_rgba(245,158,11,0.45)]'
+      : 'drop-shadow-[0_0_18px_rgba(239,68,68,0.5)]';
 
   return (
     <motion.div
@@ -140,7 +203,39 @@ export default function OperationsDashboard() {
               </span>
             </div>
 
-      {/* ── MAIN METRICS GRID (2-COLUMN) ── */}
+            {/* ── NORTH STAR HERO METRIC (the one number to look at) ── */}
+            <motion.div
+              key={northStar.label}
+              initial={{ opacity: 0, scale: 0.97 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.45, ease: [0.34, 1.56, 0.64, 1] }}
+              className={`rounded-xl border px-4 py-3 ${heroBg}`}
+            >
+              <div className="flex items-center justify-between mb-0.5">
+                <span className="text-[10px] tracking-[0.22em] font-semibold text-slate-300 uppercase">
+                  {northStar.label}
+                </span>
+                {northStar.badge && (
+                  <span className={`text-[8px] font-bold tracking-widest uppercase px-1.5 py-0.5 rounded ${heroColor} bg-black/30`}>
+                    {northStar.badge}
+                  </span>
+                )}
+              </div>
+              <motion.div
+                key={northStar.value}
+                initial={{ opacity: 0.6, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35 }}
+                className={`text-5xl font-black tabular-nums tracking-tight leading-none ${heroColor} ${heroGlow}`}
+              >
+                {northStar.value}
+              </motion.div>
+              <div className="text-[11px] text-slate-300/90 mt-1.5 font-medium">
+                {northStar.sub}
+              </div>
+            </motion.div>
+
+      {/* ── SUPPORTING METRICS GRID (2-COLUMN, secondary context) ── */}
       <div className="grid grid-cols-2 gap-3 mb-3">
         {/* LEFT COLUMN: Revenue Pulse (Monetary) */}
         <div className="bg-slate-900/60 rounded-lg p-3 border border-slate-800/80 flex flex-col justify-between">
@@ -228,7 +323,7 @@ export default function OperationsDashboard() {
                 initial={{ scale: 0.95, opacity: 0.8 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ duration: 0.4 }}
-                className={`text-3xl font-black tabular-nums tracking-tight ${otifTextColor}`}
+                className={`text-xl font-bold tabular-nums tracking-tight ${otifTextColor}`}
               >
                 {metrics.otif.toFixed(1)}%
               </motion.div>
