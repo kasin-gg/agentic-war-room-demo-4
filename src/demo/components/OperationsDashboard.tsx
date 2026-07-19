@@ -3,34 +3,15 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDemoDirector } from '../useDemoDirector';
-import { Moon, TrendingUp, TrendingDown, Minus, ShieldAlert, CheckCircle2, AlertTriangle, Package, Clock, Users, ChevronDown, ChevronUp } from 'lucide-react';
+import { Moon, TrendingUp, TrendingDown, Minus, ShieldAlert, CheckCircle2, AlertTriangle, Package, Users, ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function OperationsDashboard() {
   const director = useDemoDirector();
-  const { scenario, metrics, phase, money, clock: scenarioClock } = director;
+  const { scenario, metrics, phase, money } = director;
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
 
-  // Real-time ticking ICT clock for Phase 0
-  const [liveIctTime, setLiveIctTime] = useState<string>('');
-
-  useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      // Formatter for ICT (Asia/Bangkok)
-      const options: Intl.DateTimeFormatOptions = {
-        timeZone: 'Asia/Bangkok',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false,
-      };
-      setLiveIctTime(new Intl.DateTimeFormat('en-GB', options).format(now));
-    };
-
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
-    return () => clearInterval(interval);
-  }, []);
+  // The single authoritative clock lives in <PhaseClock/> (live time that winds
+  // back for the flashback), so the dashboard header no longer shows a time.
 
   // Micro-climbing revenue pulse for Phase 0 calm morning
   const [revenuePulse, setRevenuePulse] = useState<number>(metrics.revenueTotal);
@@ -45,9 +26,6 @@ export default function OperationsDashboard() {
       setRevenuePulse(metrics.revenueTotal);
     }
   }, [phase, metrics.revenueTotal]);
-
-  // Display clock: real-time in Phase 0, scenario timestamp in Phase 1+
-  const displayClock = phase === 0 ? `${liveIctTime} ICT` : `${scenarioClock} ICT`;
 
   // Severity color maps
   const headlineColor =
@@ -153,18 +131,6 @@ export default function OperationsDashboard() {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="text-right">
-            <div className="flex items-center justify-end gap-1.5 font-bold text-sm text-cyan-300 tabular-nums">
-              <Clock className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-              {displayClock}
-            </div>
-            {phase > 0 && (
-              <div className="text-[9px] text-amber-400/90 font-semibold tracking-wide">
-                FLASHBACK TIMELINE
-              </div>
-            )}
-          </div>
-
           <button
             onClick={() => setIsCollapsed((prev) => !prev)}
             className="p-1 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-cyan-300 border border-slate-700 transition-colors"

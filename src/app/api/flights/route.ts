@@ -87,6 +87,27 @@ const AIRLINE_CODE_RE = /^([A-Z]{3})\d/;
 // regions, adsb.lol adds ~650 unique on top. Run them simultaneously.
 const ADSB_MAX_DIST = 250; // nm — hard cap both providers enforce
 
+// ── Always-on Thailand focus ──────────────────────────────────────────────
+// This demo centers on Thailand, whose airspace OpenSky covers sparsely
+// (volunteer receivers are dense in the US/Europe, thin in SE Asia). The
+// community ADS-B networks below have strong SE Asia coverage (~50 aircraft
+// each over Bangkok alone), so we query these focus points on EVERY refresh
+// and merge them on top of whatever OpenSky returns. 250 nm radii overlap to
+// blanket Thailand and its immediate neighbours. Dedup by hex handles overlap.
+const FOCUS_REGIONS = [
+  { lat: 13.75, lon: 100.50 }, // Bangkok — central Thailand + Gulf
+  { lat: 18.79, lon:  98.98 }, // Chiang Mai — northern Thailand
+  { lat:  8.00, lon:  98.40 }, // Phuket — Andaman / south-west
+  { lat:  6.90, lon: 100.50 }, // Hat Yai — deep south + northern Malaysia
+  { lat: 15.25, lon: 104.87 }, // Ubon — Isan / Laos / Cambodia border
+  { lat: 16.87, lon:  96.20 }, // Yangon — Myanmar (west approach)
+  { lat: 10.80, lon: 106.66 }, // Ho Chi Minh City — east approach
+  { lat:  3.14, lon: 101.70 }, // Kuala Lumpur — southern approach
+];
+
+const aplPointFn = (la: number, lo: number, d: number) => `https://api.airplanes.live/v2/point/${la}/${lo}/${d}`;
+const lolPointFn = (la: number, lo: number, d: number) => `https://api.adsb.lol/v2/point/${la}/${lo}/${d}`;
+
 async function fetchRegionFrom(
   lat: number, lon: number,
   urlFn: (lat: number, lon: number, dist: number) => string,
@@ -253,6 +274,15 @@ export async function GET() {
       ? { signal: AbortSignal.timeout(30000), headers: { Authorization: `Bearer ${token}` } }
       : { signal: AbortSignal.timeout(30000) };
 
+    // Kick off the always-on Thailand focus queries in parallel with everything
+    // else — they run regardless of OpenSky status so SE Asia is always dense.
+    const focusPromise = Promise.allSettled(
+      FOCUS_REGIONS.flatMap((r) => [
+        fetchRegionFrom(r.lat, r.lon, aplPointFn, 'ac'),
+        fetchRegionFrom(r.lat, r.lon, lolPointFn, 'ac'),
+      ])
+    );
+
     const [apl_mil, apl_ladd, apl_pia, apl_emg, lol_mil, lol_ladd, lol_pia, lol_emg, osRes] = await Promise.allSettled([
       stealthFetch('https://api.airplanes.live/v2/mil',          { signal: AbortSignal.timeout(15000) }),
       stealthFetch('https://api.airplanes.live/v2/ladd',         { signal: AbortSignal.timeout(15000) }),
@@ -322,20 +352,31 @@ export async function GET() {
       }
     }
 
+    // ── Always merge the Thailand focus feeds ─────────────────────────────────
+    // Runs in every case (even when OpenSky worked) so SE Asia / Thailand is
+    // densely populated from the community networks. Dedup by hex avoids double
+    // counting aircraft OpenSky already reported.
+    let focusUnique = 0;
+    const focusResults = await focusPromise;
+    for (const r of focusResults) {
+      if (r.status === 'fulfilled') {
+        const before = seenHex.size;
+        ingestAc(r.value, allRaw, seenHex);
+        focusUnique += seenHex.size - before;
+      }
+    }
+
     // ── Phase 3: Regional fallback (when OpenSky unavailable) ─────────────────
     // airplanes.live + adsb.lol are independent feeder networks. Tested:
     // airplanes.live gives ~6 K aircraft across 30 regions, adsb.lol adds
     // ~650 more unique on top — combined ~6.8 K from zero keys.
     if (!openSkyWorked) {
-      source = 'regional';
+      source = 'regional+th-focus';
       console.warn('[OSIRIS] OpenSky unavailable — fanning out 30×2 regional queries');
 
-      const aplFn = (la: number, lo: number, d: number) => `https://api.airplanes.live/v2/point/${la}/${lo}/${d}`;
-      const lolFn = (la: number, lo: number, d: number) => `https://api.adsb.lol/v2/point/${la}/${lo}/${d}`;
-
       const [aplResults, lolResults] = await Promise.all([
-        Promise.allSettled(REGIONS.map(r => fetchRegionFrom(r.lat, r.lon, aplFn, 'ac'))),
-        Promise.allSettled(REGIONS.map(r => fetchRegionFrom(r.lat, r.lon, lolFn, 'ac'))),
+        Promise.allSettled(REGIONS.map(r => fetchRegionFrom(r.lat, r.lon, aplPointFn, 'ac'))),
+        Promise.allSettled(REGIONS.map(r => fetchRegionFrom(r.lat, r.lon, lolPointFn, 'ac'))),
       ]);
 
       for (const results of [aplResults, lolResults]) {
@@ -344,8 +385,10 @@ export async function GET() {
         }
       }
     } else {
-      source = osToken ? 'opensky-auth' : 'opensky-anon';
+      source = (osToken ? 'opensky-auth' : 'opensky-anon') + '+th-focus';
     }
+
+    console.log(`[OSIRIS] Thailand focus feeds added ${focusUnique} unique aircraft`);
 
     // ── Classify ──────────────────────────────────────────────────────────────
     const commercial: any[] = [];

@@ -516,7 +516,7 @@ export default function Dashboard() {
   useEffect(() => {
     const intervals: ReturnType<typeof setInterval>[] = [];
     if (activeLayers.flights || activeLayers.military || activeLayers.jets || activeLayers.private) {
-      intervals.push(setInterval(() => fetchEndpoint('/api/flights'), 300000)); // 5 min (was 2 min)
+      intervals.push(setInterval(() => fetchEndpoint('/api/flights'), 60000)); // 60s — positions glide via interpolation; this is the correction refresh
     }
 
     if (activeLayers.balloons) {
@@ -905,11 +905,17 @@ export default function Dashboard() {
       {/* ── HEADER ── */}
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 2.5 }} className={`absolute top-4 z-[200] pointer-events-none flex flex-col`} style={{ left: isMobile ? '24px' : '64px', right: '24px' }}>
         <div className="flex items-center gap-3 w-fit">
-          <img
-            src="https://images.squarespace-cdn.com/content/v1/5e331382d811b967fdb0e5f3/1605827400531-XMKJY9ATSNHK4TT46KAM/Header.jpg"
-            alt="OSIRIS Logo"
-            className="w-8 h-8 md:w-10 md:h-10 shrink-0 object-cover rounded-md border border-[#D4AF37]/50 shadow-[0_0_12px_rgba(212,175,55,0.4)]"
-          />
+          {/* Powered by Google Cloud (transparent) */}
+          <div className="flex items-center gap-2 pr-3 border-r border-white/15 shrink-0">
+            <img
+              src="/google-cloud.svg"
+              alt="Powered by Google Cloud"
+              className="h-8 md:h-10 w-auto object-contain shrink-0"
+            />
+            <span className="hidden md:inline text-[8px] leading-tight text-[var(--text-secondary)] font-mono tracking-[0.2em] uppercase opacity-80">
+              Powered by<br />Google Cloud
+            </span>
+          </div>
           <div className="flex flex-col items-start justify-center">
             <span className="text-xs md:text-sm font-bold font-mono tracking-[0.25em] text-[#D4AF37] uppercase drop-shadow-[0_0_10px_rgba(212,175,55,0.4)]">
               Agentic Digital Twin: Real-time Global War Room

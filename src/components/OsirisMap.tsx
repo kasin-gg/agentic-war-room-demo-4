@@ -628,6 +628,9 @@ function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCl
             <span style="color:#D4AF37;font-size:16px;font-weight:700;letter-spacing:0.1em;">${htmlEsc(cs)}</span>
             <span style="color:#5C5A54;font-size:10px;">${htmlEsc(p.icao24||'')}</span>
           </div>
+          <div id="os-flight-route" style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid rgba(212,175,55,0.15);font-size:11px;color:#5C5A54;">
+            ${cs ? '<span style="opacity:0.7;">· resolving route ·</span>' : '<span style="opacity:0.7;">no callsign — route unavailable</span>'}
+          </div>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:11px;">
             <div><span style="color:#5C5A54;font-size:9px;">MODEL</span><br/><span style="color:#E8E6E0;">${htmlEsc(p.model||'—')}</span></div>
             <div><span style="color:#5C5A54;font-size:9px;">ALT</span><br/><span style="color:#00E5FF;">${p.alt?Math.round(p.alt)+'m':'—'}</span></div>
@@ -643,6 +646,37 @@ function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCl
           </div>
           <button onclick="window.openOsirisIntel({ callsign: '${idSafe(cs)}', icao24: '${idSafe(p.icao24||'')}', model: '${idSafe(p.model||'')}', registration: '${idSafe(p.registration||'')}' })" style="width:100%;margin-top:8px;padding:6px 12px;background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.5);color:#D4AF37;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:bold;letter-spacing:0.1em;border-radius:4px;cursor:pointer;">[ DEEP DIVE INTEL ]</button>
         </div>`);
+
+        // ── Enrich with route + airline from adsbdb (free, no key) ──
+        // Fills the #os-flight-route placeholder asynchronously; degrades to
+        // "route unavailable" for private/military/unscheduled flights.
+        const thisPopup = popupRef.current;
+        const csKey = cs.toUpperCase();
+        const paintRoute = (inner: string) => {
+          if (popupRef.current !== thisPopup) return; // popup replaced/closed
+          const el = thisPopup?.getElement()?.querySelector('#os-flight-route');
+          if (el) el.innerHTML = inner;
+        };
+        if (csKey) {
+          fetch(`https://api.adsbdb.com/v0/callsign/${encodeURIComponent(csKey)}`)
+            .then(r => (r.ok ? r.json() : null))
+            .then(d => {
+              const fr = d && d.response && d.response.flightroute;
+              if (fr && fr.origin && fr.destination) {
+                const airline = fr.airline && fr.airline.name ? fr.airline.name : '';
+                const o = fr.origin, ds = fr.destination;
+                const oCity = o.municipality || o.name || o.iata_code || '?';
+                const dCity = ds.municipality || ds.name || ds.iata_code || '?';
+                paintRoute(
+                  (airline ? `<div style="color:#00E5FF;font-size:12px;font-weight:600;margin-bottom:3px;">${htmlEsc(airline)}</div>` : '') +
+                  `<div style="color:#E8E6E0;font-size:12px;line-height:1.4;">${htmlEsc(oCity)} <span style="color:#5C5A54;">(${htmlEsc(o.iata_code||'')})</span> <span style="color:#D4AF37;">→</span> ${htmlEsc(dCity)} <span style="color:#5C5A54;">(${htmlEsc(ds.iata_code||'')})</span></div>`
+                );
+              } else {
+                paintRoute('<span style="opacity:0.6;">route unavailable</span>');
+              }
+            })
+            .catch(() => paintRoute('<span style="opacity:0.6;">route unavailable</span>'));
+        }
       });
       map.on('mouseenter', layer, () => { map.getCanvas().style.cursor = 'pointer'; });
       map.on('mouseleave', layer, () => { map.getCanvas().style.cursor = ''; });
@@ -1103,24 +1137,88 @@ function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCl
     ids.forEach(id => { if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none'); });
   }, []);
 
-  // Flight data → GeoJSON (GPU rendered)
+  // ── Flight motion (dead-reckoning interpolation) ──────────────────────────
+  // Real ADS-B snapshots only refresh every ~60-90s, so between snapshots we
+  // advance each airborne aircraft along its heading at its ground speed every
+  // frame — planes glide smoothly ("move") like FlightRadar24, with no extra
+  // API load. A new snapshot resets the base positions (a gentle correction).
+  const flightMotionRef = useRef<{
+    baseTime: number;
+    sig: string;
+    movers: Record<string, { lng: number; lat: number; hdg: number; spd: number; props: any }[]>;
+  }>({ baseTime: 0, sig: '', movers: { flights: [], 'private-fl': [], jets: [], military: [] } });
+
+  // Thailand focus box — never decimate aircraft in/around it; thin the rest of
+  // the world for performance.
+  const buildMovers = useCallback((arr: any[] | undefined, decimate: number, active: boolean) => {
+    if (!active || !arr) return [];
+    const inThaiFocus = (f: any) => f && f.lat >= 3 && f.lat <= 22 && f.lng >= 95 && f.lng <= 108;
+    const filtered = decimate > 1 ? arr.filter((f: any, i: number) => inThaiFocus(f) || i % decimate === 0) : arr;
+    return filtered.map((f: any) => ({
+      lng: f.lng,
+      lat: f.lat,
+      hdg: ((f.heading || 0) * Math.PI) / 180,
+      // Grounded aircraft / unknown speed stay put.
+      spd: f.grounded || typeof f.speed_knots !== 'number' ? 0 : f.speed_knots * 0.514444, // kt → m/s
+      props: { callsign: f.callsign, heading: f.heading || 0, alt: f.alt, model: f.model, speed_knots: f.speed_knots, registration: f.registration, icao24: f.icao24 },
+    }));
+  }, []);
+
+  const renderFlights = useCallback(() => {
+    const st = flightMotionRef.current;
+    if (!st.baseTime) return;
+    let elapsed = (performance.now() - st.baseTime) / 1000;
+    if (elapsed > 180) elapsed = 180; // cap drift if the tab was backgrounded
+    const M_PER_DEG = 111320;
+    for (const source of ['flights', 'private-fl', 'jets', 'military']) {
+      const movers = st.movers[source] || [];
+      const features = movers.map((m) => {
+        let lng = m.lng, lat = m.lat;
+        if (m.spd > 0) {
+          const dist = m.spd * elapsed; // metres
+          lat = m.lat + (dist * Math.cos(m.hdg)) / M_PER_DEG;
+          lng = m.lng + (dist * Math.sin(m.hdg)) / (M_PER_DEG * Math.cos((m.lat * Math.PI) / 180));
+        }
+        return { type: 'Feature' as const, geometry: { type: 'Point' as const, coordinates: [lng, lat] }, properties: m.props };
+      });
+      setGeo(source, features);
+    }
+  }, [setGeo]);
+
+  // Rebuild movers whenever new snapshot data arrives or a layer toggles.
   useEffect(() => {
     if (!mapReady) return;
-    const toFeatures = (arr: any[], decimate: number = 1) => {
-      let filtered = arr || [];
-      if (decimate > 1) {
-        filtered = filtered.filter((_, i) => i % decimate === 0);
-      }
-      return filtered.map((f: any) => ({
-        type: 'Feature' as const, geometry: { type: 'Point' as const, coordinates: [f.lng, f.lat] },
-        properties: { callsign: f.callsign, heading: f.heading || 0, alt: f.alt, model: f.model, speed_knots: f.speed_knots, registration: f.registration, icao24: f.icao24 },
-      }));
+    const c = data.commercial_flights, pf = data.private_flights, jt = data.private_jets, ml = data.military_flights;
+    const st = flightMotionRef.current;
+    st.movers = {
+      flights: buildMovers(c, 10, activeLayers.flights),
+      'private-fl': buildMovers(pf, 2, activeLayers.private),
+      jets: buildMovers(jt, 2, activeLayers.jets),
+      military: buildMovers(ml, 1, activeLayers.military),
     };
-    setGeo('flights', activeLayers.flights ? toFeatures(data.commercial_flights, 10) : []);
-    setGeo('private-fl', activeLayers.private ? toFeatures(data.private_flights, 2) : []);
-    setGeo('jets', activeLayers.jets ? toFeatures(data.private_jets, 2) : []);
-    setGeo('military', activeLayers.military ? toFeatures(data.military_flights) : []);
-  }, [mapReady, data.commercial_flights, data.private_flights, data.private_jets, data.military_flights, activeLayers.flights, activeLayers.private, activeLayers.jets, activeLayers.military]);
+    // Signature detects a genuinely new snapshot (positions changed) vs. a
+    // same-data re-render (e.g. a cached poll or a toggle) — only a new snapshot
+    // resets the interpolation base, so gliding stays continuous otherwise.
+    const sig = [c?.length || 0, c?.[0]?.icao24, c?.[0]?.lng, pf?.length || 0, jt?.length || 0, ml?.length || 0].join('|');
+    if (sig !== st.sig) { st.sig = sig; st.baseTime = performance.now(); }
+    else if (!st.baseTime) st.baseTime = performance.now();
+    renderFlights();
+  }, [mapReady, data.commercial_flights, data.private_flights, data.private_jets, data.military_flights, activeLayers.flights, activeLayers.private, activeLayers.jets, activeLayers.military, buildMovers, renderFlights]);
+
+  // Animation loop: advance interpolated positions ~10×/s (smooth, cheap).
+  useEffect(() => {
+    if (!mapReady) return;
+    let raf = 0;
+    let last = 0;
+    const loop = (t: number) => {
+      raf = requestAnimationFrame(loop);
+      if (t - last < 100) return; // throttle to ~10 fps of source updates
+      last = t;
+      renderFlights();
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [mapReady, renderFlights]);
 
     // Update aircraft icon colors dynamically on theme switch
     useEffect(() => {

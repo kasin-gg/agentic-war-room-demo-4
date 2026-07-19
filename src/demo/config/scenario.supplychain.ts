@@ -61,7 +61,7 @@ export const supplyChainScenario: Scenario = {
   disruptedNodeId: 'node-disrupted-alpha',
   rerouteNodeIds: ['node-reroute-alpha', 'node-reroute-beta'],
   dialogue: {
-    p0: "It's 8:14 AM on a Tuesday at Cymbal Logistics HQ in Bangkok. Global revenue is climbing and fulfillment health sits at a nominal 98.7% OTIF.",
+    p0: "It's a normal Tuesday morning at Cymbal Logistics HQ in Bangkok. Global revenue is climbing and fulfillment health sits at a nominal 98.7% OTIF.",
     p1: 'Flash back to 4:02 AM while the operations team slept. Early environmental telemetry detects an OTIF tremor on primary SE Asia shipping routes.',
     p2: 'At 4:06 AM, Meridian Port Hub goes dark under extreme typhoon weather. 1,284 shipments and $47M in revenue are immediately exposed.',
     p3: 'At 4:09 AM, the autonomous agent swarm activates: Sentinel flags outage, Sourcing inspects alternate capacity, Logistics simulates dual-hub rerouting, and Finance bounds P&L impact.',

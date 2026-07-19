@@ -180,7 +180,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" dir="ltr">
+    <html lang="en" dir="ltr" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -197,7 +197,7 @@ export default function RootLayout({
         />
 
       </head>
-      <body className="antialiased">
+      <body className="antialiased" suppressHydrationWarning>
         <ErrorBoundary name="OSIRIS Core">
           {children}
         </ErrorBoundary>
