@@ -75,6 +75,7 @@ export interface Scenario {
   timing: {
     typeSpeedMs: number;
     lineDelayMs: number;
+    staggerMs?: number; // delay between specialist agents mobilizing at phase 3
   };
   agents: AgentConfig[];
   resolutionBadges: string[];

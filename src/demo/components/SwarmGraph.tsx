@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDemoDirector } from '../useDemoDirector';
-import { Network, ShieldAlert, CheckCircle2, ChevronDown, ChevronUp, Radio } from 'lucide-react';
+import { Network, ShieldAlert, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface SwarmNode {
   id: string;
@@ -11,55 +11,47 @@ interface SwarmNode {
   x: number;
   y: number;
   color: string;
+  active: boolean;
 }
 
-interface SwarmLink {
-  source: string;
-  target: string;
-}
-
-const FIXED_NODES: SwarmNode[] = [
-  { id: 'sentinel', label: 'SENTINEL', x: 180, y: 130, color: '#00BCD4' },
-  { id: 'sourcing', label: 'SOURCING', x: 80, y: 70, color: '#00FF80' },
-  { id: 'logistics', label: 'LOGISTICS', x: 280, y: 70, color: '#FF9500' },
-  { id: 'finance', label: 'FINANCE', x: 80, y: 190, color: '#E91E63' },
-  { id: 'comms', label: 'COMMS', x: 280, y: 190, color: '#9C27B0' },
+// Fixed, hand-placed layout: hub (index 0) centered, specialists around it.
+// Deterministic and cheaper than a live force sim (Task 6 Part B).
+const POSITIONS: { x: number; y: number }[] = [
+  { x: 180, y: 130 }, // hub (Sentinel)
+  { x: 80, y: 70 },
+  { x: 280, y: 70 },
+  { x: 80, y: 190 },
+  { x: 280, y: 190 },
 ];
 
-const FIXED_LINKS: SwarmLink[] = [
-  { source: 'sentinel', target: 'sourcing' },
-  { source: 'sentinel', target: 'logistics' },
-  { source: 'sentinel', target: 'finance' },
-  { source: 'sentinel', target: 'comms' },
-  { source: 'sourcing', target: 'logistics' },
-  { source: 'logistics', target: 'finance' },
+// Link topology by node index (hub → specialists + a couple specialist bridges).
+const LINK_PAIRS: [number, number][] = [
+  [0, 1],
+  [0, 2],
+  [0, 3],
+  [0, 4],
+  [1, 2],
+  [2, 3],
 ];
 
 export default function SwarmGraph() {
-  const { phase, agents } = useDemoDirector();
-  const [isVisible, setIsVisible] = useState<boolean>(true);
+  const { phase, agents, showGraph } = useDemoDirector();
   const [isMinimized, setIsMinimized] = useState<boolean>(false);
 
-  // Keyboard shortcut listener for 'g' key to toggle graph visibility
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore inside text input elements
-      const target = e.target as HTMLElement;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+  // Visibility is owned by the shared store (toggled with 'g' via DemoKeyboard).
+  if (!showGraph) return null;
 
-      if (e.key === 'g' || e.key === 'G') {
-        e.preventDefault();
-        setIsVisible((prev) => !prev);
-      }
-    };
+  // Nodes derived from config.agents — labels/colors/active all config-driven,
+  // so the graph mobilizes in the SAME staggered cascade as the agent panels.
+  const nodes: SwarmNode[] = agents.slice(0, POSITIONS.length).map((agent, i) => ({
+    id: agent.id,
+    label: agent.name.split(' ')[0].toUpperCase(),
+    x: POSITIONS[i].x,
+    y: POSITIONS[i].y,
+    color: agent.accentColor,
+    active: agent.active,
+  }));
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  if (!isVisible) return null;
-
-  const isSwarmActive = phase >= 3;
   const isRogueActive = phase === 3;
   const isRogueQuarantined = phase >= 4;
   const isResolved = phase === 5;
@@ -129,13 +121,13 @@ export default function SwarmGraph() {
               </defs>
 
               {/* Network Links */}
-              {FIXED_LINKS.map((link, idx) => {
-                const sNode = FIXED_NODES.find((n) => n.id === link.source)!;
-                const tNode = FIXED_NODES.find((n) => n.id === link.target)!;
-                const isLinkActive =
-                  sNode.id === 'sentinel'
-                    ? phase >= 0
-                    : isSwarmActive;
+              {LINK_PAIRS.map(([sIdx, tIdx], idx) => {
+                const sNode = nodes[sIdx];
+                const tNode = nodes[tIdx];
+                if (!sNode || !tNode) return null;
+                // A link lights only when both endpoints are active, so links
+                // reveal in the same staggered cascade as the nodes.
+                const isLinkActive = sNode.active && tNode.active;
 
                 return (
                   <g key={idx}>
@@ -229,11 +221,8 @@ export default function SwarmGraph() {
               )}
 
               {/* Swarm Agent Nodes */}
-              {FIXED_NODES.map((node) => {
-                const isNodeActive =
-                  node.id === 'sentinel'
-                    ? true
-                    : isSwarmActive;
+              {nodes.map((node) => {
+                const isNodeActive = node.active;
 
                 const nodeColor = isResolved
                   ? '#00FF80'

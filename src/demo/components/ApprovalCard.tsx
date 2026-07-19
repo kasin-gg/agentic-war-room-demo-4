@@ -4,15 +4,12 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDemoDirector } from '../useDemoDirector';
 import {
-  ShieldCheck,
   CheckCircle2,
   PauseCircle,
   Smartphone,
-  ChevronRight,
   Sparkles,
   Lock,
   Clock,
-  DollarSign,
   FileCheck2,
 } from 'lucide-react';
 
@@ -20,6 +17,15 @@ export default function ApprovalCard() {
   const { awaitingApproval, isHolding, approve, hold, scenario, clock, countdown } =
     useDemoDirector();
   const { approvalRole, money, resolutionBadges } = scenario;
+
+  // Derive the plan copy from config so it works for any scenario.
+  const disruptedLabel =
+    scenario.nodes.find((n) => n.id === scenario.disruptedNodeId)?.label ?? 'Primary Hub';
+  const rerouteLabel =
+    scenario.rerouteNodeIds
+      .map((id) => scenario.nodes.find((n) => n.id === id)?.label)
+      .filter(Boolean)
+      .join(' & ') || 'Alternate Hubs';
 
   if (!awaitingApproval) return null;
 
@@ -78,12 +84,12 @@ export default function ApprovalCard() {
               <div className="text-xs space-y-1.5 text-slate-200">
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400">Target Disrupted Hub:</span>
-                  <span className="font-bold text-red-400">Meridian Port Hub (Offline)</span>
+                  <span className="font-bold text-red-400">{disruptedLabel} (Offline)</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400">Reroute Corridors:</span>
                   <span className="font-semibold text-cyan-300">
-                    North Bay &amp; Oceanic Hubs
+                    {rerouteLabel}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">

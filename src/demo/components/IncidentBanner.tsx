@@ -8,6 +8,15 @@ import { AlertCircle, AlertOctagon, CheckCircle2, Bot, Lock, ShieldCheck } from 
 export default function IncidentBanner() {
   const { phase, scenario } = useDemoDirector();
 
+  // Derived, config-driven incident copy (nothing scenario-specific hardcoded).
+  const disruptedNode = scenario.nodes.find((n) => n.id === scenario.disruptedNodeId);
+  const disruptedLabel = (disruptedNode?.label ?? 'PRIMARY HUB').toUpperCase();
+  const rerouteCount = scenario.rerouteNodeIds.length;
+  const currencyPrefix =
+    scenario.money.currency === 'USD' ? '$' : `${scenario.money.currency} `;
+  const recovered = `${currencyPrefix}${scenario.money.recoveredValue}M`;
+  const recoveredOtif = scenario.metrics.phases.p5.otif;
+
   const getBannerState = () => {
     switch (phase) {
       case 0:
@@ -26,7 +35,7 @@ export default function IncidentBanner() {
           iconColor: 'text-amber-400 animate-pulse',
           badge: 'SIGNAL DETECTED',
           badgeBg: 'bg-amber-900/80 border-amber-500/50 text-amber-200',
-          title: 'EARLY TELEMETRY TREMOR — OTIF DEGRADATION DETECTED AT 04:02',
+          title: `EARLY TELEMETRY TREMOR — OTIF DEGRADATION DETECTED AT ${scenario.clock.p1}`,
         };
       case 2:
         return {
@@ -35,7 +44,7 @@ export default function IncidentBanner() {
           iconColor: 'text-red-400 animate-bounce',
           badge: 'CRITICAL INCIDENT [SIMULATION]',
           badgeBg: 'bg-red-900/90 border-red-400/60 text-red-100 font-bold',
-          title: 'MERIDIAN PORT HUB OFFLINE — SUPPLY LINE SEVERED',
+          title: `${disruptedLabel} OFFLINE — SUPPLY LINE SEVERED`,
         };
       case 3:
         return {
@@ -44,7 +53,7 @@ export default function IncidentBanner() {
           iconColor: 'text-cyan-400 animate-spin',
           badge: 'SWARM RESPONDING',
           badgeBg: 'bg-cyan-900/80 border-cyan-400/50 text-cyan-200',
-          title: 'SWARM MOBILIZED — SYNTHESIZING DUAL-HUB REROUTE PLAN',
+          title: `SWARM MOBILIZED — SYNTHESIZING ${rerouteCount}-HUB REROUTE PLAN`,
         };
       case 4:
         return {
@@ -62,7 +71,7 @@ export default function IncidentBanner() {
           iconColor: 'text-emerald-400',
           badge: 'INCIDENT RESOLVED',
           badgeBg: 'bg-emerald-900/90 border-emerald-400/60 text-emerald-100 font-bold',
-          title: 'REROUTE EXECUTED — $44M PROTECTED · OTIF RESTORED TO 97%',
+          title: `REROUTE EXECUTED — ${recovered} PROTECTED · OTIF RESTORED TO ${recoveredOtif}%`,
         };
       default:
         return null;

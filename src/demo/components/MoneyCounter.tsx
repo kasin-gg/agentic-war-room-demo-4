@@ -3,41 +3,42 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDemoDirector } from '../useDemoDirector';
-import { DollarSign, ShieldAlert, ShieldCheck, TrendingDown, TrendingUp } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, TrendingDown, TrendingUp } from 'lucide-react';
 
 export default function MoneyCounter() {
   const { money, phase } = useDemoDirector();
-  const { atRiskValue, recoveredValue, atRiskLabel, recoveredLabel } = money;
+  const { atRiskValue, recoveredValue, atRiskLabel, recoveredLabel, currency } = money;
 
-  // Counter animation value state
+  // Counter animation value state (only meaningful during the recovery count-down).
   const [displayedValue, setDisplayedValue] = useState<number>(atRiskValue);
 
-  const isExposed = phase >= 2 && phase < 5;
-  const isRecovered = phase === 5;
+  // Exposure/recovery flags come from the shared director (single source of truth).
+  const isRecovered = money.isRecovered;
   const isVisible = phase >= 2;
 
-  // Count animation logic on phase 5 transition
+  // Count animation logic on phase 5 transition. When not recovered we render the
+  // at-risk value directly (below), so no effect-body setState is needed there —
+  // this also makes reset (phase -> 0) return to the at-risk figure cleanly.
   useEffect(() => {
-    if (isRecovered) {
-      let current = atRiskValue;
-      const target = recoveredValue;
-      const step = (current - target) / 15;
-      const interval = setInterval(() => {
-        current -= step;
-        if (current <= target) {
-          setDisplayedValue(target);
-          clearInterval(interval);
-        } else {
-          setDisplayedValue(Math.round(current));
-        }
-      }, 40);
-      return () => clearInterval(interval);
-    } else {
-      setDisplayedValue(atRiskValue);
-    }
-  }, [phase, isRecovered, atRiskValue, recoveredValue]);
+    if (!isRecovered) return;
+    let current = atRiskValue;
+    const target = recoveredValue;
+    const step = (current - target) / 15;
+    const interval = setInterval(() => {
+      current -= step;
+      if (current <= target) {
+        setDisplayedValue(target);
+        clearInterval(interval);
+      } else {
+        setDisplayedValue(Math.round(current));
+      }
+    }, 40);
+    return () => clearInterval(interval);
+  }, [isRecovered, atRiskValue, recoveredValue]);
 
   if (!isVisible) return null;
+
+  const shownValue = isRecovered ? displayedValue : atRiskValue;
 
   return (
     <AnimatePresence>
@@ -95,14 +96,14 @@ export default function MoneyCounter() {
                   : 'text-red-300 drop-shadow-[0_0_15px_rgba(239,68,68,0.6)]'
               }`}
             >
-              ${displayedValue}M
+              ${shownValue}M
             </span>
             <span
               className={`text-xs font-semibold ${
                 isRecovered ? 'text-emerald-400/90' : 'text-red-400/90'
               }`}
             >
-              USD
+              {currency}
             </span>
           </div>
 

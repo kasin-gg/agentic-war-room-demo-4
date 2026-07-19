@@ -71,6 +71,7 @@ export const supplyChainScenario: Scenario = {
   timing: {
     typeSpeedMs: 22,
     lineDelayMs: 500,
+    staggerMs: 220,
   },
   agents: [
     {

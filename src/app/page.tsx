@@ -23,6 +23,7 @@ const OsintPanel = dynamic(() => import('@/components/OsintPanel'));
 const EntityGraphPanel = dynamic(() => import('@/components/EntityGraphPanel'));
 const TokenPanel = dynamic(() => import('@/components/TokenPanel'));
 const WarRoomDirector = dynamic(() => import('@/demo/WarRoomDirector'), { ssr: false });
+const DemoKeyboard = dynamic(() => import('@/demo/DemoKeyboard'), { ssr: false });
 const OperationsDashboard = dynamic(() => import('@/demo/components/OperationsDashboard'), { ssr: false });
 const IncidentMapLayer = dynamic(() => import('@/demo/components/IncidentMapLayer'), { ssr: false });
 const SwarmPanel = dynamic(() => import('@/demo/components/SwarmPanel'), { ssr: false });
@@ -1304,7 +1305,10 @@ export default function Dashboard() {
       {/* Toggleable Swarm Topology Graph Overlay ([G] Key Toggle) */}
       <SwarmGraph />
 
-      {/* War Room Director Overlay */}
+      {/* Single canonical demo keyboard handler (SPACE/Y/K/R/G) */}
+      <DemoKeyboard />
+
+      {/* War Room Director Overlay (debug readout, hidden unless SHOW_DEBUG_OVERLAY) */}
       <WarRoomDirector />
 
       {/* ── GLOBAL STATUS TICKER (bottom) ── */}

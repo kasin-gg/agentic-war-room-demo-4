@@ -1,40 +1,18 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useDemoDirector } from './useDemoDirector';
+import { SHOW_DEBUG_OVERLAY } from './config';
 
 export default function WarRoomDirector() {
   const director = useDemoDirector();
   const { advance, approve, hold, reset, awaitingApproval } = director;
   const [isCollapsed, setIsCollapsed] = React.useState<boolean>(false);
 
-  // Global Keyboard listener for demo controls (SPACE, Y, K, R)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore when typing inside input elements
-      const targetTag = (e.target as HTMLElement)?.tagName;
-      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(targetTag)) return;
-
-      const key = e.key.toLowerCase();
-
-      if (e.code === 'Space') {
-        e.preventDefault();
-        advance();
-      } else if (key === 'y') {
-        e.preventDefault();
-        approve();
-      } else if (key === 'k') {
-        e.preventDefault();
-        hold();
-      } else if (key === 'r') {
-        e.preventDefault();
-        reset();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [advance, approve, hold, reset]);
+  // Keyboard is owned centrally by DemoKeyboard; this panel is a pure readout.
+  // Hidden by default (Task 1.5 / Task 7 clean-stage requirement); flip
+  // SHOW_DEBUG_OVERLAY in config to inspect raw state.
+  if (!SHOW_DEBUG_OVERLAY) return null;
 
   return (
     <div className="fixed bottom-4 right-4 z-[9999] p-3 rounded-xl backdrop-blur-md bg-black/85 border border-cyan-500/30 text-mono text-xs w-[440px] shadow-2xl space-y-2.5 font-mono select-none">
