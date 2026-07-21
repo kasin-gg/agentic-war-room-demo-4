@@ -106,8 +106,8 @@ function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCl
         if (!map.isMoving() && !map.isZooming()) {
           const dt = time - lastTime;
           const center = map.getCenter();
-          // Adjust spin speed: 0.5 degrees per second
-          center.lng += (0.5 * dt) / 1000;
+          // Spin speed: 2 degrees per second (fast, cinematic globe reveal)
+          center.lng += (2.0 * dt) / 1000;
           map.setCenter(center);
         }
         
@@ -1148,12 +1148,12 @@ function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCl
     movers: Record<string, { lng: number; lat: number; hdg: number; spd: number; props: any }[]>;
   }>({ baseTime: 0, sig: '', movers: { flights: [], 'private-fl': [], jets: [], military: [] } });
 
-  // Thailand focus box — never decimate aircraft in/around it; thin the rest of
-  // the world for performance.
+  // Southeast Asia focus box — never decimate aircraft in/around it (keep every
+  // plane, so the whole region is dense); thin the rest of the world for perf.
   const buildMovers = useCallback((arr: any[] | undefined, decimate: number, active: boolean) => {
     if (!active || !arr) return [];
-    const inThaiFocus = (f: any) => f && f.lat >= 3 && f.lat <= 22 && f.lng >= 95 && f.lng <= 108;
-    const filtered = decimate > 1 ? arr.filter((f: any, i: number) => inThaiFocus(f) || i % decimate === 0) : arr;
+    const inSeaFocus = (f: any) => f && f.lat >= -11 && f.lat <= 29 && f.lng >= 92 && f.lng <= 141;
+    const filtered = decimate > 1 ? arr.filter((f: any, i: number) => inSeaFocus(f) || i % decimate === 0) : arr;
     return filtered.map((f: any) => ({
       lng: f.lng,
       lat: f.lat,

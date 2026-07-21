@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Layers, BarChart3, Newspaper, Search, X, Globe, MapPinned, Radar, Satellite, Moon, ExternalLink, AlertTriangle, Activity, Database, Wifi, Play, Network, Crosshair } from 'lucide-react';
+import { Layers, BarChart3, Newspaper, Search, X, Globe, MapPinned, Radar, Satellite, Moon, ExternalLink, AlertTriangle, Activity, Database, Wifi, Play, Network, Crosshair, Compass } from 'lucide-react';
 import IntelFeed from '@/components/IntelFeed';
 import MarketsPanel from '@/components/MarketsPanel';
 import ScmPanel from '@/components/ScmPanel';
@@ -16,7 +16,7 @@ import KeyboardShortcuts from '@/components/KeyboardShortcuts';
 import GlobalStatusBar from '@/components/GlobalStatusBar';
 import LiveAlerts from '@/components/LiveAlerts';
 import { useDemoCamera } from '@/demo/useDemoDirector';
-import { ACTIVE_SCENARIO } from '@/demo/config';
+import { ACTIVE_SCENARIO, DEMO_MODE } from '@/demo/config';
 
 const OsirisMap = dynamic(() => import('@/components/OsirisMap'), { ssr: false });
 const LayerPanel = dynamic(() => import('@/components/LayerPanel'));
@@ -134,6 +134,7 @@ export default function Dashboard() {
 
   // Demo cold-open camera state (lightweight selector — no typewriter churn).
   const demoCam = useDemoCamera();
+  const wasIntroRef = useRef<boolean>(false);
 
   useEffect(() => {
     document.body.className = osirisTheme === 'core' ? '' : `theme-${osirisTheme}`;
@@ -148,16 +149,21 @@ export default function Dashboard() {
 
     if (demoCam.introActive) {
       setMapProjection('globe');
-      setDemoMode(true); // 0.5°/s globe auto-spin
+      setDemoMode(true); // fast globe auto-spin
       // Beat 1 scatters coverage reticles; beat 0 keeps the globe clean.
       if (demoCam.introStep >= 1 && intro) {
         setScanTargets(intro.coveragePoints.map((p) => ({ id: p.id, lat: p.lat, lng: p.lng })));
       } else {
         setScanTargets([]);
       }
-      try {
-        mapInstance.easeTo({ zoom: 2.1, pitch: 0, duration: 1400 });
-      } catch { /* map not ready */ }
+      // Frame the globe ONCE when the cold-open begins (first load or reset).
+      // We intentionally do NOT re-zoom on step changes or override the user's
+      // manual zoom — the earth is never auto-zoomed while you're watching it.
+      if (!wasIntroRef.current) {
+        try {
+          mapInstance.easeTo({ center: [100, 13], zoom: 2.1, pitch: 0, duration: 1200 });
+        } catch { /* map not ready */ }
+      }
     } else {
       // Descend into the operation: stop the spin BEFORE the flyTo so the rAF
       // loop can't re-grab the camera, clear reticles, then fly into Bangkok.
@@ -166,9 +172,10 @@ export default function Dashboard() {
       const hq = ACTIVE_SCENARIO.nodes.find((n) => n.role === 'hq');
       const center: [number, number] = hq ? hq.coords : [100.5018, 13.7563];
       try {
-        mapInstance.flyTo({ center, zoom: 4.6, pitch: 25, bearing: -12, duration: 3500, essential: true });
+        mapInstance.flyTo({ center, zoom: 4.6, pitch: 25, bearing: 0, duration: 3500, essential: true });
       } catch { /* map not ready */ }
     }
+    wasIntroRef.current = demoCam.introActive;
   }, [demoCam.introActive, demoCam.introStep, mapInstance]);
 
   const isMobile = useIsMobile();
@@ -236,6 +243,10 @@ export default function Dashboard() {
         return next;
       });
     }
+
+    // Skip the IP-geolocation fly-to during the demo so the cold-open globe is
+    // never auto-zoomed to the presenter's city.
+    if (DEMO_MODE) return;
 
     // Delay geolocation until map is ready (after splash screen clears)
     const geoTimer = setTimeout(() => {
@@ -892,6 +903,16 @@ export default function Dashboard() {
               <span className="hidden md:inline">SAT</span>
             </button>
           </div>
+
+          {/* Reset orientation to North (bearing 0, level pitch) */}
+          <button
+            onClick={() => mapInstance?.easeTo({ bearing: 0, pitch: 0, duration: 600 })}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border-primary)] bg-[var(--bg-panel)] backdrop-blur-2xl shadow-[0_4px_24px_rgba(0,0,0,0.5)] text-[9px] font-mono tracking-wider text-[var(--text-muted)] hover:text-[var(--cyan-primary)] transition-all duration-200"
+            title="Reset orientation to North"
+          >
+            <Compass className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">NORTH</span>
+          </button>
         </div>
 
         {/* Scale Bar */}
@@ -1331,13 +1352,13 @@ export default function Dashboard() {
           <SwarmPanel />
 
           {/* ── DEMO HUD OVERLAYS ── */}
-          {/* Top Center Incident Banner */}
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[190] pointer-events-auto max-w-[90vw]">
+          {/* Center Incident Banner — below the header/top bar & phase clock */}
+          <div className="absolute top-[132px] left-1/2 -translate-x-1/2 z-[190] pointer-events-auto max-w-[90vw]">
             <IncidentBanner />
           </div>
 
-          {/* Top Center Hero Money Counter */}
-          <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[180] pointer-events-auto">
+          {/* Hero Money Counter — stacked under the banner */}
+          <div className="absolute top-[180px] left-1/2 -translate-x-1/2 z-[180] pointer-events-auto">
             <MoneyCounter />
           </div>
 

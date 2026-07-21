@@ -62,7 +62,7 @@ export default function SwarmGraph() {
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.4 }}
-      className="absolute bottom-16 left-16 z-[160] w-[360px] backdrop-blur-xl bg-slate-950/85 border border-cyan-500/30 rounded-2xl p-3 shadow-2xl font-mono select-none pointer-events-auto"
+      className="absolute bottom-12 left-1/2 -translate-x-1/2 z-[160] w-[360px] backdrop-blur-xl bg-slate-950/85 border border-cyan-500/30 rounded-2xl p-3 shadow-2xl font-mono select-none pointer-events-auto"
     >
       {/* Panel Header */}
       <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">

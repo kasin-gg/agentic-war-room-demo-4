@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  // Allow the dev server's HMR/JS chunks to load when viewing via the LAN IP
+  // (not just localhost). Without this, Next 16 blocks /_next/* cross-origin,
+  // the client bundle never hydrates, and the splash screen gets stuck.
+  allowedDevOrigins: ['192.168.100.30'],
   serverExternalPackages: ['ws'],
   transpilePackages: ['react-map-gl', 'mapbox-gl', 'maplibre-gl'],
   typescript: {

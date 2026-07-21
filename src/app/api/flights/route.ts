@@ -87,22 +87,37 @@ const AIRLINE_CODE_RE = /^([A-Z]{3})\d/;
 // regions, adsb.lol adds ~650 unique on top. Run them simultaneously.
 const ADSB_MAX_DIST = 250; // nm — hard cap both providers enforce
 
-// ── Always-on Thailand focus ──────────────────────────────────────────────
-// This demo centers on Thailand, whose airspace OpenSky covers sparsely
-// (volunteer receivers are dense in the US/Europe, thin in SE Asia). The
-// community ADS-B networks below have strong SE Asia coverage (~50 aircraft
-// each over Bangkok alone), so we query these focus points on EVERY refresh
-// and merge them on top of whatever OpenSky returns. 250 nm radii overlap to
-// blanket Thailand and its immediate neighbours. Dedup by hex handles overlap.
+// ── Always-on Southeast Asia focus ─────────────────────────────────────────
+// This demo centers on SE Asia, whose airspace OpenSky covers sparsely
+// (volunteer receivers are dense in the US/Europe, thin here). The community
+// ADS-B networks below have strong SE Asia coverage (~50 aircraft each over
+// Bangkok alone), so we query these focus points on EVERY refresh and merge
+// them on top of whatever OpenSky returns. 250 nm radii overlap to blanket the
+// region across every SE Asian country. Dedup by hex handles overlap.
 const FOCUS_REGIONS = [
+  // Mainland (Thailand, Myanmar, Laos, Cambodia, Vietnam, Malaysia, Singapore)
   { lat: 13.75, lon: 100.50 }, // Bangkok — central Thailand + Gulf
-  { lat: 18.79, lon:  98.98 }, // Chiang Mai — northern Thailand
-  { lat:  8.00, lon:  98.40 }, // Phuket — Andaman / south-west
-  { lat:  6.90, lon: 100.50 }, // Hat Yai — deep south + northern Malaysia
-  { lat: 15.25, lon: 104.87 }, // Ubon — Isan / Laos / Cambodia border
-  { lat: 16.87, lon:  96.20 }, // Yangon — Myanmar (west approach)
-  { lat: 10.80, lon: 106.66 }, // Ho Chi Minh City — east approach
-  { lat:  3.14, lon: 101.70 }, // Kuala Lumpur — southern approach
+  { lat: 18.79, lon:  98.98 }, // Chiang Mai — N Thailand / Laos / N Myanmar
+  { lat:  8.00, lon:  98.40 }, // Phuket — Andaman / S Myanmar
+  { lat:  6.90, lon: 100.50 }, // Hat Yai — S Thailand / N Malaysia
+  { lat: 16.87, lon:  96.20 }, // Yangon — Myanmar
+  { lat: 21.98, lon:  96.08 }, // Mandalay — N Myanmar
+  { lat: 17.97, lon: 102.60 }, // Vientiane — Laos
+  { lat: 21.03, lon: 105.85 }, // Hanoi — N Vietnam
+  { lat: 16.05, lon: 108.20 }, // Da Nang — central Vietnam
+  { lat: 10.80, lon: 106.66 }, // Ho Chi Minh City — S Vietnam / Cambodia
+  { lat:  3.14, lon: 101.70 }, // Kuala Lumpur — Malaysia
+  { lat:  1.35, lon: 103.82 }, // Singapore
+  // Maritime (Indonesia, Borneo, Brunei, Philippines)
+  { lat:  3.60, lon:  98.67 }, // Medan — N Sumatra
+  { lat: -6.20, lon: 106.85 }, // Jakarta — W Java
+  { lat: -7.25, lon: 112.75 }, // Surabaya — E Java / Bali
+  { lat:  1.55, lon: 110.35 }, // Kuching — W Borneo
+  { lat:  5.98, lon: 116.07 }, // Kota Kinabalu — N Borneo / Brunei
+  { lat: -5.13, lon: 119.42 }, // Makassar — Sulawesi
+  { lat: 14.60, lon: 120.98 }, // Manila — N Philippines
+  { lat: 10.32, lon: 123.90 }, // Cebu — central Philippines
+  { lat:  7.07, lon: 125.61 }, // Davao — S Philippines
 ];
 
 const aplPointFn = (la: number, lo: number, d: number) => `https://api.airplanes.live/v2/point/${la}/${lo}/${d}`;
@@ -274,7 +289,7 @@ export async function GET() {
       ? { signal: AbortSignal.timeout(30000), headers: { Authorization: `Bearer ${token}` } }
       : { signal: AbortSignal.timeout(30000) };
 
-    // Kick off the always-on Thailand focus queries in parallel with everything
+    // Kick off the always-on SE Asia focus queries in parallel with everything
     // else — they run regardless of OpenSky status so SE Asia is always dense.
     const focusPromise = Promise.allSettled(
       FOCUS_REGIONS.flatMap((r) => [
@@ -352,7 +367,7 @@ export async function GET() {
       }
     }
 
-    // ── Always merge the Thailand focus feeds ─────────────────────────────────
+    // ── Always merge the SE Asia focus feeds ──────────────────────────────────
     // Runs in every case (even when OpenSky worked) so SE Asia / Thailand is
     // densely populated from the community networks. Dedup by hex avoids double
     // counting aircraft OpenSky already reported.
@@ -371,7 +386,7 @@ export async function GET() {
     // airplanes.live gives ~6 K aircraft across 30 regions, adsb.lol adds
     // ~650 more unique on top — combined ~6.8 K from zero keys.
     if (!openSkyWorked) {
-      source = 'regional+th-focus';
+      source = 'regional+sea-focus';
       console.warn('[OSIRIS] OpenSky unavailable — fanning out 30×2 regional queries');
 
       const [aplResults, lolResults] = await Promise.all([
@@ -385,10 +400,10 @@ export async function GET() {
         }
       }
     } else {
-      source = (osToken ? 'opensky-auth' : 'opensky-anon') + '+th-focus';
+      source = (osToken ? 'opensky-auth' : 'opensky-anon') + '+sea-focus';
     }
 
-    console.log(`[OSIRIS] Thailand focus feeds added ${focusUnique} unique aircraft`);
+    console.log(`[OSIRIS] SE Asia focus feeds added ${focusUnique} unique aircraft`);
 
     // ── Classify ──────────────────────────────────────────────────────────────
     const commercial: any[] = [];
