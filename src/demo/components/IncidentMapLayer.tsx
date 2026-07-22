@@ -6,6 +6,7 @@ import { useDemoDirector } from '../useDemoDirector';
 
 interface IncidentMapLayerProps {
   map: maplibregl.Map | null;
+  lightMode?: boolean;
 }
 
 const NODES_SOURCE_ID = 'osiris-incident-nodes-source';
@@ -48,7 +49,7 @@ function generateArcCoords(
   return points;
 }
 
-export default function IncidentMapLayer({ map }: IncidentMapLayerProps) {
+export default function IncidentMapLayer({ map, lightMode = false }: IncidentMapLayerProps) {
   const director = useDemoDirector();
   const { nodes, arcs, phase } = director;
 
@@ -230,6 +231,15 @@ export default function IncidentMapLayer({ map }: IncidentMapLayerProps) {
           },
         });
       }
+
+      // Node contrast for the current basemap: dark map → white core + subtle
+      // glow; light map → dark core + stronger glow (so nodes read on Positron).
+      if (map.getLayer('osiris-incident-nodes-core')) {
+        map.setPaintProperty('osiris-incident-nodes-core', 'circle-color', lightMode ? '#0F172A' : '#FFFFFF');
+      }
+      if (map.getLayer('osiris-incident-nodes-glow')) {
+        map.setPaintProperty('osiris-incident-nodes-glow', 'circle-opacity', lightMode ? 0.45 : 0.25);
+      }
     };
 
     // Guard the style-load race: if the style isn't ready yet, apply once it is.
@@ -241,7 +251,7 @@ export default function IncidentMapLayer({ map }: IncidentMapLayerProps) {
     return () => {
       map.off('styledata', applyLayers);
     };
-  }, [map, nodes, arcs, phase]);
+  }, [map, nodes, arcs, phase, lightMode]);
 
   // Handle Camera Choreography smoothly on phase transitions (config-driven).
   useEffect(() => {

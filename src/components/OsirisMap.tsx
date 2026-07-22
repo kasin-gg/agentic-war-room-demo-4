@@ -43,6 +43,20 @@ function computeSolarTerminator(): [number, number][] {
 
 const EMPTY_FC = { type: 'FeatureCollection' as const, features: [] };
 
+// Globe atmosphere / space colour per basemap. Dark = deep space; light = a soft
+// daytime sky so the void around the globe matches the light basemap.
+const DARK_SKY = {
+  'sky-color': '#04040A', 'sky-horizon-blend': 0.5,
+  'horizon-color': '#0a0a1a', 'horizon-fog-blend': 0.3,
+  'fog-color': '#04040A', 'fog-ground-blend': 0.9,
+};
+const LIGHT_SKY = {
+  'sky-color': '#cfe0f2', 'sky-horizon-blend': 0.4,
+  'horizon-color': '#e7eef6', 'horizon-fog-blend': 0.3,
+  'fog-color': '#eef3f8', 'fog-ground-blend': 0.8,
+};
+const skyFor = (style: string) => (style === 'light' ? LIGHT_SKY : DARK_SKY);
+
 function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightClick, onViewStateChange, flyToLocation, projection = 'globe', mapStyle = 'dark', sweepData, scanTargets = [], demoMode = false, theme = 'core', onMapReady }: OsirisMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -1715,14 +1729,7 @@ function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCl
       if (projection === 'globe') {
         map.easeTo({ pitch: 20, duration: 1200 });
         try {
-          (map as any).setSky({
-            'sky-color': '#04040A',
-            'sky-horizon-blend': 0.5,
-            'horizon-color': '#0a0a1a',
-            'horizon-fog-blend': 0.3,
-            'fog-color': '#04040A',
-            'fog-ground-blend': 0.9,
-          });
+          (map as any).setSky(skyFor(mapStyle));
         } catch (e) { console.warn('[OSIRIS] Suppressed error:', e instanceof Error ? e.message : e); }
       } else {
         map.easeTo({ pitch: 0, duration: 800 });
@@ -1798,16 +1805,22 @@ function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCl
     }
   }, [mapReady, activeLayers.terrain_3d]);
 
-  // Satellite / Dark style switching
+  // Basemap style switching: Dark (base) / Light (Positron raster) / Satellite.
+  // Light & Satellite are opaque raster overlays inserted BELOW day-night-fill,
+  // so they cover the dark base but all data/labels/incident layers stay on top.
+  // (Avoids map.setStyle(), which would tear down all our sources/layers.)
   useEffect(() => {
     if (!mapReady || !mapRef.current) return;
     if (mapStyle === prevStyleRef.current) return;
     prevStyleRef.current = mapStyle;
     const map = mapRef.current;
 
+    const setVisIf = (id: string, visible: boolean) => {
+      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none');
+    };
+
     try {
-      if (mapStyle !== 'dark') {
-        // Add satellite raster tiles
+      if (mapStyle === 'satellite') {
         if (!map.getSource('satellite-tiles')) {
           map.addSource('satellite-tiles', {
             type: 'raster',
@@ -1817,12 +1830,44 @@ function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCl
           });
           map.addLayer({ id: 'satellite-layer', type: 'raster', source: 'satellite-tiles', paint: { 'raster-opacity': 0.85 } }, 'day-night-fill');
         } else {
-          map.setLayoutProperty('satellite-layer', 'visibility', 'visible');
+          setVisIf('satellite-layer', true);
         }
+        setVisIf('light-layer', false);
+      } else if (mapStyle === 'light') {
+        if (!map.getSource('light-tiles')) {
+          map.addSource('light-tiles', {
+            type: 'raster',
+            tiles: [
+              'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+              'https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+              'https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+              'https://d.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+            ],
+            tileSize: 256,
+            maxzoom: 20,
+            attribution: '© CARTO © OpenStreetMap contributors',
+          });
+          map.addLayer({ id: 'light-layer', type: 'raster', source: 'light-tiles', paint: { 'raster-opacity': 1 } }, 'day-night-fill');
+        } else {
+          setVisIf('light-layer', true);
+        }
+        setVisIf('satellite-layer', false);
       } else {
-        if (map.getLayer('satellite-layer')) {
-          map.setLayoutProperty('satellite-layer', 'visibility', 'none');
-        }
+        // Dark — hide both overlays, show the base dark-matter style.
+        setVisIf('satellite-layer', false);
+        setVisIf('light-layer', false);
+      }
+
+      // Soften the night terminator over the light basemap so it isn't muddy.
+      if (map.getLayer('day-night-fill')) {
+        map.setPaintProperty('day-night-fill', 'fill-opacity', mapStyle === 'light' ? 0.15 : 0.35);
+      }
+
+      // Lighten the surroundings: the globe atmosphere/space and the style's
+      // background layer (the void behind the tiles) follow the basemap.
+      try { (map as any).setSky(skyFor(mapStyle)); } catch { /* mercator ignores sky */ }
+      if (map.getLayer('background')) {
+        map.setPaintProperty('background', 'background-color', mapStyle === 'light' ? '#e7edf5' : '#04040A');
       }
     } catch (e) {
       console.warn('Style switch failed:', e);

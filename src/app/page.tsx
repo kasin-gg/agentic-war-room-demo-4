@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Layers, BarChart3, Newspaper, Search, X, Globe, MapPinned, Radar, Satellite, Moon, ExternalLink, AlertTriangle, Activity, Database, Wifi, Play, Network, Crosshair, Compass } from 'lucide-react';
+import { Layers, BarChart3, Newspaper, Search, X, Globe, MapPinned, Radar, Satellite, Moon, Sun, ExternalLink, AlertTriangle, Activity, Database, Wifi, Play, Network, Crosshair, Compass } from 'lucide-react';
 import IntelFeed from '@/components/IntelFeed';
 import MarketsPanel from '@/components/MarketsPanel';
 import ScmPanel from '@/components/ScmPanel';
@@ -125,7 +125,7 @@ export default function Dashboard() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [mobilePanel, setMobilePanel] = useState<'layers'|'markets'|'intel'|'search'|'recon'|null>(null);
   const [mapProjection, setMapProjection] = useState<'globe'|'mercator'>('globe');
-  const [mapStyle, setMapStyle] = useState<'dark'|'satellite'>('dark');
+  const [mapStyle, setMapStyle] = useState<'light'|'dark'|'satellite'>('dark');
   const [sweepData, setSweepData] = useState<any>(null);
   const [scanTargets, setScanTargets] = useState<any[]>([]);
   const [entityGraphTarget, setEntityGraphTarget] = useState<{ type: string; id: string; label?: string; properties?: Record<string, any> } | null>(null);
@@ -822,7 +822,7 @@ export default function Dashboard() {
           data={data} 
           activeLayers={activeLayers} 
           projection={mapProjection} 
-          mapStyle={mapStyle === 'satellite' ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}' : 'dark'} 
+          mapStyle={mapStyle}
           onEntityClick={handleEntityClick} 
           onMouseCoords={handleMouseCoords} 
           onRightClick={handleRightClick} 
@@ -834,7 +834,7 @@ export default function Dashboard() {
           theme={osirisTheme}
           onMapReady={setMapInstance}
         />
-        {!demoCam.introActive && <IncidentMapLayer map={mapInstance} />}
+        {!demoCam.introActive && <IncidentMapLayer map={mapInstance} lightMode={mapStyle === 'light'} />}
       </ErrorBoundary>
 
 
@@ -875,8 +875,21 @@ export default function Dashboard() {
             </button>
           </div>
 
-          {/* Style Toggle (Night / Satellite) */}
+          {/* Style Toggle (Light / Dark / Satellite) */}
           <div className="flex items-center rounded-xl overflow-hidden border border-[var(--border-primary)] bg-[var(--bg-panel)] backdrop-blur-2xl shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
+            <button
+              onClick={() => setMapStyle('light')}
+              className={`flex items-center gap-1.5 px-3 py-2 text-[9px] font-mono tracking-wider transition-all duration-200 ${
+                mapStyle === 'light'
+                  ? 'bg-[var(--gold-primary)]/15 text-[var(--gold-primary)]'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+              }`}
+              title="Map — Light"
+            >
+              <Sun className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">MAP (LIGHT)</span>
+            </button>
+            <div className="w-px h-4 bg-[var(--border-primary)]" />
             <button
               onClick={() => setMapStyle('dark')}
               className={`flex items-center gap-1.5 px-3 py-2 text-[9px] font-mono tracking-wider transition-all duration-200 ${
@@ -884,10 +897,10 @@ export default function Dashboard() {
                   ? 'bg-[var(--cyan-primary)]/15 text-[var(--cyan-primary)]'
                   : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
               }`}
-              title="Night Mode"
+              title="Map — Dark"
             >
               <Moon className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">MAP</span>
+              <span className="hidden md:inline">MAP (DARK)</span>
             </button>
             <div className="w-px h-4 bg-[var(--border-primary)]" />
             <button
